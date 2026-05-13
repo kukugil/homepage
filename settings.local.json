@@ -10,7 +10,17 @@
       "Bash(git init *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(cd /c/Users/Administrator/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills && ls -la)",
+      "Read(//c/Users/Administrator/.claude/plugins/cache/claude-plugins-official/superpowers/5.1.0/skills/**)",
+      "Bash(cd /d \"C:\\\\Users\\\\Administrator\\\\.claude\")",
+      "Bash(.claude\\\\vendor\\\\bin\\\\plugin.exe marketplace *)",
+      "Bash(cd \"C:\\\\Users\\\\Administrator\\\\.claude\" && .claude\\\\vendor\\\\bin\\\\plugin.exe marketplace add claude-plugins-official/superpowers)",
+      "Read(//c/Users/Administrator/.claude/**)",
+      "Bash(.claude.exe plugin *)",
+      "Bash(cd /c/Users/Administrator/AppData/Roaming/npm && ls -la | grep claude)",
+      "Read(//c/Users/Administrator/AppData/Roaming/npm/**)",
+      "Bash(claude plugin *)"
     ]
   }
 }
