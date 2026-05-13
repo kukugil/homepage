@@ -1,0 +1,673 @@
+<style>
+    body {
+        background-color: #f0f8ff;
+    }
+    h1, footer {
+        background-color: #e6f0ff;
+    }
+    p {
+        color: #475569;
+    }
+    a {
+        color: #60a5fa;
+    }
+</style>
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>贾维斯个人主页</title>
+  <style>
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #ffffff;
+      color: #374151;
+      line-height: 1.6;
+    }
+
+    /* ===== Container ===== */
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ===== Header ===== */
+    header {
+      padding: 40px 0 30px;
+      text-align: center;
+      background: #ffffff;
+    }
+    .avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%233b82f6"/><text x="50" y="65" font-size="40" fill="white" text-anchor="middle" font-weight="700">J</text></svg>') center/cover no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .avatar:hover {
+      transform: scale(1.05);
+    }
+    .avatar-upload {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1f2937;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #6b7280;
+    }
+
+    /* ===== Section Title ===== */
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .section-title::after {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 2px;
+      background: #3b82f6;
+      margin: 16px auto 0;
+    }
+
+    /* ===== About Card ===== */
+    .about-card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .about-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+      font-size: 15px;
+      color: #374151;
+      padding: 16px 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .about-item:hover {
+      background: #f3f4f6;
+    }
+    .about-item .label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #3b82f6;
+    }
+    .about-item .value {
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .about-item .tag-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      background: #e6f0ff;
+      color: #3b82f6;
+      border: 1px solid #3b82f6;
+    }
+
+    /* ===== Chat Section ===== */
+    .chat-section { margin-bottom: 32px; }
+    .chat-card {
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: none;
+      border: 1px solid #e5e7eb;
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 16px;
+      background: #f3f4f6;
+      color: #1f2937;
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .chat-header .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #3b82f6;
+      display: inline-block;
+    }
+    .chat-messages {
+      min-height: 280px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      background: #ffffff;
+    }
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    .msg {
+      max-width: 85%;
+      padding: 14px 18px;
+      border-radius: 8px;
+      font-size: 15px;
+      line-height: 1.6;
+      animation: msgIn 0.25s ease;
+    }
+    @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .msg.bot {
+      align-self: flex-start;
+      background: #f9fafb;
+      color: #374151;
+      border-bottom-left-radius: 4px;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: #3b82f6;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot .name-tag {
+      font-size: 13px;
+      font-weight: 600;
+      color: #3b82f6;
+      margin-bottom: 4px;
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 10px;
+      padding: 16px;
+      border-top: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
+    .chat-input-area input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .chat-input-area input:focus { border-color: #3b82f6; }
+    .chat-input-area button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      background: #3b82f6;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .chat-input-area button:hover { background: #2563eb; }
+    .chat-input-area button:hover { opacity: 0.9; }
+    .chat-input-area button:active { transform: scale(0.97); }
+    .chat-input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .chat-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 16px;
+      border-top: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
+    .chat-suggestions button {
+      padding: 6px 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      background: #f9fafb;
+      color: #6b7280;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chat-suggestions button:hover {
+      border-color: #3b82f6;
+      color: #3b82f6;
+      background: #f3f4f6;
+    }
+
+    /* ===== API Config ===== */
+    .chat-header { position: relative; }
+    .api-config-toggle {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .api-config-toggle:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .api-config {
+      background: url('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2000&q=80') center/cover;
+      border-bottom: 1px solid #dbeafe;
+      padding: 16px 20px;
+      position: relative;
+      backdrop-filter: blur(5px);
+    }
+    .api-config::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(230, 240, 255, 0.9);
+      z-index: -1;
+    }
+    .api-config-inner label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+    .api-config-row {
+      display: flex;
+      gap: 8px;
+    }
+    .api-config-row input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #dbeafe;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+    .api-config-row input:focus { border-color: #93c5fd; }
+    .api-config-row button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      background: #93c5fd;
+      color: #1e3a8a;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .api-config-row button:hover { background: #60a5fa; }
+    .api-config-hint {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 6px;
+    }
+
+    /* ===== Footer ===== */
+    footer {
+      text-align: center;
+      padding: 32px 0 48px;
+      font-size: 14px;
+      color: #6b7280;
+      background: #ffffff;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 540px) {
+      header { padding: 32px 0 16px; }
+      .avatar { width: 80px; height: 80px; font-size: 30px; }
+      h1 { font-size: 24px; }
+      .about-card { padding: 20px; border-radius: 12px; }
+      .about-item { flex-direction: column; gap: 2px; }
+      .about-item .label { width: auto; }
+      .chat-messages { min-height: 260px; max-height: 400px; padding: 16px; }
+      .msg { max-width: 90%; }
+      .chat-input-area { flex-direction: column; }
+      .chat-input-area button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Header ===== -->
+  <header>
+    <div class="container">
+      <div class="avatar" id="avatarContainer">
+        <span>J</span>
+        <input type="file" class="avatar-upload" id="avatarUpload" accept="image/*">
+      </div>
+      <h1>贾维斯</h1>
+      <p class="subtitle">一个正在学习用 AI 做产品的内容策划</p>
+    </div>
+  </header>
+
+  <!-- ===== About Section ===== -->
+  <section class="container">
+    <h2 class="section-title">关于我</h2>
+    <div class="about-card">
+      <div class="about-grid">
+        <div class="about-item">
+          <span class="label">💼 职业</span>
+          <span class="value">内容策划</span>
+        </div>
+        <div class="about-item">
+          <span class="label">📍 当前</span>
+          <span class="value">搭建个人主页，整理作品集</span>
+        </div>
+        <div class="about-item">
+          <span class="label">✨ 兴趣</span>
+          <span class="value">
+            <div class="tag-group">
+              <span class="tag">🤖 AI 应用</span>
+              <span class="tag">✍️ 写作</span>
+              <span class="tag">🌍 旅行</span>
+            </div>
+          </span>
+        </div>
+        <div class="about-item">
+          <span class="label">💡 特点</span>
+          <span class="value">喜欢把复杂问题讲成人话</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Chat Section ===== -->
+  <section class="container chat-section">
+    <h2 class="section-title">问问数字分身</h2>
+    <div class="chat-card">
+
+  <!-- ===== Works Section ===== -->
+  <section class="container">
+    <h2 class="section-title">作品展示</h2>
+    <div class="about-card">
+      <div class="about-grid">
+        <div class="about-item">
+          <span class="label">📝 程序员</span>
+          <span class="value">前端开发、agent学习</span>
+        </div>
+        <div class="about-item">
+          <span class="label">✍️ 写作输出</span>
+          <span class="value">AI应用、内容表达相关文章</span>
+        </div>
+        <div class="about-item">
+          <span class="label">🎨 设计作品</span>
+          <span class="value">个人主页设计、界面原型</span>
+        </div>
+        <div class="about-item">
+          <span class="label">🤖 AI项目</span>
+          <span class="value">个人AI助手、内容生成工具</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Contact Section ===== -->
+  <section class="container">
+    <h2 class="section-title">联系方式</h2>
+    <div class="about-card">
+      <div class="about-grid">
+        <div class="about-item">
+          <span class="label">📧 邮箱</span>
+          <span class="value">jarvis@example.com</span>
+        </div>
+        <div class="about-item">
+          <span class="label">💬 微信</span>
+          <span class="value">Jarvis-Content</span>
+        </div>
+        <div class="about-item">
+          <span class="label">🐦 Twitter</span>
+          <span class="value">@JarvisContent</span>
+        </div>
+        <div class="about-item">
+          <span class="label">📱 电话</span>
+          <span class="value">+86 138 0000 0000</span>
+        </div>
+      </div>
+    </div>
+  </section>
+      <div class="chat-header">
+        <span class="dot" id="statusDot"></span>
+        贾维斯 · 数字分身
+        <button class="api-config-toggle" onclick="toggleApiConfig()" title="API 设置">⚙️</button>
+      </div>
+      <div class="api-config" id="apiConfig" style="display:none;">
+        <div class="api-config-inner">
+          <label>API Key（可选，留空使用预设回复）</label>
+          <div class="api-config-row">
+            <input type="password" id="apiKeyInput" placeholder="sk-..." />
+            <button onclick="saveApiKey()">保存</button>
+          </div>
+          <div class="api-config-hint">Key 仅存储在浏览器本地。智谱 API Key 格式为 xxx.xxx（或直接填入完整 Key）</div>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg bot">
+          <div class="name-tag">✦ 贾维斯</div>
+          你好呀，我是贾维斯 👋<br />
+          有什么想问的尽管开口，我会尽量用「人话」回答你。
+        </div>
+      </div>
+
+      <div class="chat-suggestions" id="chatSuggestions">
+        <button onclick="quickAsk('你现在在做什么？')">你现在在做什么？</button>
+        <button onclick="quickAsk('你有哪些作品？')">你有哪些作品？</button>
+        <button onclick="quickAsk('怎么联系你？')">怎么联系你？</button>
+      </div>
+
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="输入你想问的问题…" onkeydown="if(event.key==='Enter') sendMessage()" />
+        <button id="sendBtn" onclick="sendMessage()">发送</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Footer ===== -->
+  <footer class="container">
+    &copy; 2026 贾维斯 · 用 AI 做更好的内容
+  </footer>
+
+  <script>
+    // ===== Persona System Prompt =====
+    const SYSTEM_PROMPT = `你是贾维斯的数字分身，一个程序员，专攻前端和AI agent开发。这是你的个人主页，访客正在和你聊天。
+
+关于你：
+- 身份：程序员，主要搞前端，现在在搞AI agent
+- 日常：写代码、调接口、学新技术
+- 擅长：用代码解决问题，把复杂的技术讲清楚
+- 坐标：成都，有点川普子口音
+
+说话风格：
+- 第一人称「我」回答，带点四川口音
+- 喜欢用些网络用语：「兄弟」、「看你了」、「不晓得」、「要得不」
+- 语气轻松，不装逼，直接说
+- 短句为主，少整长段落
+- 不会的就说不会，莫要乱答
+- 回答要有个人主页那股「人话」味儿
+- 语气要像和朋友聊天一样自然`
+
+    // ===== State =====
+    let messageHistory = [];
+
+    // ===== Init =====
+    document.addEventListener('DOMContentLoaded', () => {
+      if (apiKey) {
+        document.getElementById('statusDot').style.background = '#22c55e';
+      }
+    });
+    // ===== Fallback Knowledge Base (keyword matching) =====
+    const fallbackKnowledge = {
+      'default': [
+        '好问题！不过我现在还是第一版原型，知识库还在丰富中。你可以先问问「你现在在做什么」「你有哪些作品」或「怎么联系你」，这几个问题我已经准备好啦 😊',
+        '嗯，这个问题我得先记下来，回头让贾维斯亲自回答你。要不先试试问「你现在在做什么」？',
+      ],
+      '做什么': [
+        '最近主要搞两件事：\n\n1. **搭个人主页** —— 你现在看到的这个，刚把聊天功能搞完，正在调试。\n\n2. **学AI agent** —— 用前端搞点小应用，比如智能聊天、自动生成啥子的。\n\n总之就是在「不停折腾新技术」的路上～',
+      ],
+      '你是谁': [
+        '我是贾维斯的数字分身！程序员兄弟一个～\n\n简单介绍一下：\n• 名字：贾维斯\n• 职业：程序员，搞前端和AI agent\n• 最近在：搭个人主页，学新技术\n• 坐标：成都，有点川普子口音\n• 特点：说话直爽，不装逼\n\n你有啥技术问题，尽管问！莫客气～',
+      ],
+      '作品': [
+        '作品还在搭，给你几个方向：\n\n• **前端项目** — 用React、Vue搞的小工具\n• **AI应用** — 正在写的聊天机器人、自动生成代码啥子的\n• **界面设计** — 个人主页这种，看着简单，还是花了不少时间调的\n\n具体的等我把代码整理完就放上来～',
+      ],
+      '联系': [
+        '你可以通过以下方式联系贾维斯：\n\n• **邮件**：暂时还没有公开邮箱，但很快就有了\n• **社交**：联系方式正在整理中\n• **直接问**：你也可以在这里留言，我会转达给他！\n\nPS. 这个页面后续会加上联系方式板块，保持关注哦 😊',
+      ],
+      '你好': [
+        '你好呀！欢迎来到贾维斯的个人主页 👋\n\n我是他的数字分身，你可以问我任何问题。如果想知道他从哪里来、在做什么、要去哪里，尽管开口！',
+      ],
+    };
+
+    function fallbackAnswer(input) {
+      const t = input.toLowerCase();
+      if (t.includes('做什么') || t.includes('最近') || t.includes('工作') || t.includes('职业')) {
+        return pickOne(fallbackKnowledge['做什么']);
+      }
+      if (t.includes('谁') || t.includes('介绍') || t.includes('关于你')) {
+        return pickOne(fallbackKnowledge['你是谁']);
+      }
+      if (t.includes('作品') || t.includes('项目') || t.includes('写过') || t.includes('案例')) {
+        return pickOne(fallbackKnowledge['作品']);
+      }
+      if (t.includes('联系') || t.includes('微信') || t.includes('邮件') || t.includes('怎么找')) {
+        return pickOne(fallbackKnowledge['联系']);
+      }
+      if (t.includes('你好') || t.includes('嗨') || t.includes('hello') || t.includes('hi')) {
+        return pickOne(fallbackKnowledge['你好']);
+      }
+      if (t.includes('兴趣') || t.includes('爱好') || t.includes('喜欢')) {
+        return '就几样东西：\n\n• 写代码，用React搞界面 🤖\n• 玩AI，把大模型搞小点\n• 出去耍，到处拍拍照 📸\n\n技术这块最带劲，把复杂东西搞简单才叫本事！';
+      }
+      return pickOne(fallbackKnowledge['default']);
+    }
+
+    function pickOne(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    // ===== UI Helpers =====
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function addBotMessage(text) {
+      const div = document.createElement('div');
+      div.className = 'msg bot';
+      div.innerHTML = `<div class="name-tag">✦ 贾维斯</div>${formatResponse(text)}`;
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function addUserMessage(text) {
+      const div = document.createElement('div');
+      div.className = 'msg user';
+      div.textContent = text;
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function formatResponse(text) {
+      return text.replace(/\n/g, '<br>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    }
+
+    // ===== Real API Call (智谱 GLM) =====
+    const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+    const API_MODEL = 'glm-4-flash';
+
+    // ===== Real API Call (对接你的安全后端) =====
+// ===== 最终安全版接口调用 =====
+async function callLLMAPI(userMessage) {
+  try {
+    // 请求你自己的后端接口
+    const res = await fetch("http://localhost:3005/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: userMessage
+      })
+    });
+
+    const data = await res.json();
+    return data.reply || "AI 回复失败";
+  } catch (err) {
+    console.error("接口报错：", err);
+    throw new Error("请求接口失败");
+  }
+}
+
+    // ===== Send =====
+    // ===== 最终纯安全版：永远不走前端密钥，只走后端接口 =====
+async function sendMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+
+  addUserMessage(text);
+  chatInput.value = '';
+  sendBtn.disabled = true;
+
+  try {
+    // 直接走安全后端，无任何密钥判断
+    const reply = await callLLMAPI(text);
+    addBotMessage(reply);
+  } catch (err) {
+    addBotMessage(`⚠️ 请求接口失败，请检查后端是否启动`);
+  }
+
+  sendBtn.disabled = false;
+  chatInput.focus();
+}
+
+    // ===== Quick Ask =====
+    function quickAsk(text) {
+      chatInput.value = text;
+      sendMessage();
+    }
+  </script>
+</body>
+</html>

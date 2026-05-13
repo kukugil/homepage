@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude config:*)",
+      "Skill(update-config)",
+      "Bash(python -m venv .venv)",
+      "Bash(.venv\\\\Scripts\\\\Activate.ps1)",
+      "Bash(python -m pip install -r requirements.txt --force-reinstall -i https://mirrors.aliyun.com/pypi/simple/)",
+      "Bash(python main.py)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git config *)"
+    ]
+  }
+}
