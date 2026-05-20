@@ -6,6 +6,16 @@ const deviceRoutes = require('./routes/device');
 const { errorHandler } = require('./middleware');
 const { sanitizeSN } = require('./storage');
 
+const fs = require('fs');
+
+// Ensure storage root directory exists
+if (!fs.existsSync(CONFIG.STORAGE_ROOT)) {
+  fs.mkdirSync(CONFIG.STORAGE_ROOT, { recursive: true });
+}
+if (!fs.existsSync(CONFIG.DL_DIR)) {
+  fs.mkdirSync(CONFIG.DL_DIR, { recursive: true });
+}
+
 const app = express();
 
 // Body parsing

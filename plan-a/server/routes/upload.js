@@ -27,9 +27,9 @@ const upload = multer({
 // POST /api/v1/books/upload
 router.post('/books/upload',
   rateLimiter(),
+  upload.single('file'),
   validateSN,
   validateToken,
-  upload.single('file'),
   asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
     const sn = req.validatedSN;
@@ -74,9 +74,9 @@ router.post('/books/upload',
 // POST /api/v1/books/batch-upload
 router.post('/books/batch-upload',
   rateLimiter(),
+  upload.array('files', 10),
   validateSN,
   validateToken,
-  upload.array('files', 10),
   asyncHandler(async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files provided' });
