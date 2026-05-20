@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电子阅读器 - 书籍管理</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>电子阅读器书籍管理</h1>
+      <div class="device-info">
+        <span class="sn-label">设备 SN:</span>
+        <span id="sn-display" class="sn-value">未连接</span>
+        <button id="btn-connect-ble" class="btn btn-primary">连接设备</button>
+        <input type="text" id="sn-manual" class="sn-input" placeholder="或手动输入 SN" maxlength="64" style="display:none;">
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="upload">上传书籍</button>
+      <button class="tab" data-tab="books">书籍列表</button>
+    </nav>
+
+    <!-- Upload Tab -->
+    <section id="tab-upload" class="tab-content active">
+      <div class="upload-zone" id="upload-zone">
+        <div class="upload-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17,8 12,3 7,8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <p>拖拽文件到此处，或点击选择</p>
+        <p class="upload-hint">支持 EPUB / PDF / TXT，单文件最大 500MB</p>
+        <input type="file" id="file-input" multiple accept=".epub,.pdf,.txt" hidden>
+      </div>
+      <div class="upload-controls">
+        <label class="file-format-hint">
+          <input type="checkbox" id="chk-use-token"> 使用访问令牌
+        </label>
+        <input type="text" id="auth-token" class="token-input" placeholder="输入访问令牌（如已启用）" style="display:none;">
+      </div>
+      <div id="upload-progress" class="upload-progress hidden">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <p id="progress-text"></p>
+      </div>
+      <div id="upload-results" class="upload-results"></div>
+    </section>
+
+    <!-- Books Tab -->
+    <section id="tab-books" class="tab-content">
+      <div class="books-toolbar">
+        <button id="btn-refresh" class="btn btn-secondary">刷新列表</button>
+        <button id="btn-reorder-save" class="btn btn-primary" disabled>保存排序</button>
+      </div>
+      <div id="books-list" class="books-list">
+        <p class="empty-state">暂无书籍，请先上传。</p>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/js/ble.js"></script>
+  <script src="/js/upload.js"></script>
+  <script src="/js/books.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
