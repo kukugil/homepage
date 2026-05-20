@@ -89,7 +89,7 @@ export function Header() {
                 disabled={connecting}
                 className={`px-4 py-2 text-sm tracking-wider pixel-button
                   ${isConnected
-                    ? "bg-[#5a7a4a] text-foreground"
+                    ? "bg-success text-success-foreground"
                     : "bg-accent text-accent-foreground hover:bg-accent/90"
                   }`}
               >
@@ -99,8 +99,8 @@ export function Header() {
           </div>
           {isConnected && (
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-[#5a7a4a] animate-pulse" />
-              <span className="text-sm text-[#5a7a4a]">{deviceSN}</span>
+              <div className="w-2 h-2 bg-success animate-pulse" />
+              <span className="text-sm text-success">{deviceSN}</span>
             </div>
           )}
         </div>

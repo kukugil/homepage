@@ -229,7 +229,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
               className={`
                 border-l-4 px-4 py-3 bg-card flex items-center justify-between
                 ${file.status === "success"
-                  ? "border-[#5a7a4a]"
+                  ? "border-success"
                   : file.status === "error"
                     ? "border-destructive"
                     : "border-accent"
@@ -249,7 +249,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
                   </div>
                 )}
                 {file.status === "success" && (
-                  <svg width="16" height="16" viewBox="0 0 16 16" className="text-[#5a7a4a]">
+                  <svg width="16" height="16" viewBox="0 0 16 16" className="text-success">
                     <rect x="2" y="8" width="2" height="2" fill="currentColor"/>
                     <rect x="4" y="10" width="2" height="2" fill="currentColor"/>
                     <rect x="6" y="8" width="2" height="2" fill="currentColor"/>
