@@ -53,18 +53,27 @@ app.use('/api/v1', uploadRoutes);
 app.use('/api/v1', deviceRoutes);
 
 // Serve web frontend
-app.use(express.static(path.join(__dirname, '..', 'public')));
+const frontendOut = path.join(__dirname, '..', 'frontend', 'out');
+const publicDir = path.join(__dirname, '..', 'public');
+const staticDir = fs.existsSync(frontendOut) ? frontendOut : publicDir;
+app.use(express.static(staticDir));
 
 // SPA fallback
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  const indexPath = path.join(staticDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(200).send('E-Reader Express Server Running');
+  }
 });
 
 // Error handler
 app.use(errorHandler);
 
-app.listen(CONFIG.PORT, () => {
-  console.log(`E-Reader server running on http://0.0.0.0:${CONFIG.PORT}`);
+const port = parseInt(process.env.PORT, 10) || 3001;
+app.listen(port, () => {
+  console.log(`E-Reader server running on http://0.0.0.0:${port}`);
   console.log(`Storage: ${CONFIG.DL_DIR}`);
 });
 
