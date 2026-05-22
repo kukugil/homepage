@@ -2,6 +2,7 @@ services:
   - type: web
     name: ereader-book-manager
     env: node
+    rootDir: plan-a
     buildCommand: npm install
     startCommand: node server/index.js
     healthCheckPath: /health
