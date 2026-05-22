@@ -88,10 +88,19 @@ app.listen(port, () => {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, shutting down...');
   require('./db').closeDb();
   process.exit(0);
 });
 process.on('SIGINT', () => {
+  console.log('Received SIGINT, shutting down...');
   require('./db').closeDb();
   process.exit(0);
+});
+process.on('exit', (code) => {
+  console.log(`Process exited with code: ${code}`);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err.message);
+  process.exit(1);
 });
