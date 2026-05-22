@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ereader-book-manager
+    env: node
+    buildCommand: npm install
+    startCommand: node server/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=1024

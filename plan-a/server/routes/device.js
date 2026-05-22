@@ -24,7 +24,7 @@ router.get('/devices/:sn/books',
         checksum: b.checksum ? `sha256:${b.checksum}` : '',
         metadata_version: b.metadata_version,
         cover_url: `/dl/${sn}/covers/${b.book_id}.jpg`,
-        download_url: `/dl/${sn}/books/${b.book_id}`,
+        download_url: `/dl/${sn}/books/${b.book_id}.${b.format}`,
         created_at: b.created_at,
       })),
     });
@@ -41,7 +41,7 @@ router.delete('/devices/:sn/books/:bookId',
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    try { await fsp.unlink(bookPath(sn, bookId)); } catch {}
+    try { await fsp.unlink(bookPath(sn, bookId, book.format)); } catch {}
     try { await fsp.unlink(coverPath(sn, bookId)); } catch {}
 
     db.deleteBook(bookId);

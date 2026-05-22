@@ -35,25 +35,34 @@ export function FilmGrain() {
         }}
       />
 
-      <div className="fixed top-4 left-4 z-20 flex gap-1">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="w-2 h-2 bg-accent/20" />
-        ))}
+      {/* Corner decorations — hidden on mobile to save space */}
+      <div className="hidden sm:block fixed top-4 left-4 z-20">
+        <div className="flex gap-1">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="w-2 h-2 bg-accent/20" />
+          ))}
+        </div>
       </div>
-      <div className="fixed top-4 right-4 z-20 flex gap-1">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="w-2 h-2 bg-accent/20" />
-        ))}
+      <div className="hidden sm:block fixed top-4 right-4 z-20">
+        <div className="flex gap-1">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="w-2 h-2 bg-accent/20" />
+          ))}
+        </div>
       </div>
-      <div className="fixed bottom-4 left-4 z-20 flex gap-1">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="w-2 h-2 bg-accent/20" />
-        ))}
+      <div className="hidden sm:block fixed bottom-4 left-4 z-20">
+        <div className="flex gap-1">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="w-2 h-2 bg-accent/20" />
+          ))}
+        </div>
       </div>
-      <div className="fixed bottom-4 right-4 z-20 flex gap-1">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="w-2 h-2 bg-accent/20" />
-        ))}
+      <div className="hidden sm:block fixed bottom-4 right-4 z-20">
+        <div className="flex gap-1">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="w-2 h-2 bg-accent/20" />
+          ))}
+        </div>
       </div>
     </>
   )

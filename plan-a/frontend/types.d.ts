@@ -33,6 +33,7 @@ interface BluetoothRemoteGATTServer {
   connect(): Promise<BluetoothRemoteGATTServer>
   disconnect(): void
   getPrimaryService(uuid: string): Promise<BluetoothRemoteGATTService>
+  getPrimaryServices(uuid?: string): Promise<BluetoothRemoteGATTService[]>
 }
 
 interface BluetoothRemoteGATTService {
@@ -40,6 +41,7 @@ interface BluetoothRemoteGATTService {
   uuid: string
   isPrimary: boolean
   getCharacteristic(uuid: string): Promise<BluetoothRemoteGATTCharacteristic>
+  getCharacteristics(uuid?: string): Promise<BluetoothRemoteGATTCharacteristic[]>
 }
 
 interface BluetoothRemoteGATTCharacteristic {

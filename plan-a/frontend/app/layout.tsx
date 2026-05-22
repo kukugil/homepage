@@ -18,7 +18,8 @@ const pressStart = Press_Start_2P({
 export const metadata: Metadata = {
   title: '电子阅读器书籍管理',
   description: '像素风复古电子阅读器文件管理系统',
-  generator: 'v0.app',
+
+
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

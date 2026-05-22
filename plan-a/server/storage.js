@@ -16,8 +16,9 @@ function coversDir(sn) {
   return path.join(snDir(sn), 'covers');
 }
 
-function bookPath(sn, bookId) {
-  return path.join(booksDir(sn), bookId);
+function bookPath(sn, bookId, format) {
+  const name = format ? `${bookId}.${format}` : bookId;
+  return path.join(booksDir(sn), name);
 }
 
 function coverPath(sn, bookId) {

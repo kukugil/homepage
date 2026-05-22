@@ -17,7 +17,7 @@ function buildManifest(sn) {
       checksum: b.checksum ? `sha256:${b.checksum}` : '',
       metadata_version: b.metadata_version || 1,
       cover_url: `/dl/${sn}/covers/${b.book_id}.jpg`,
-      download_url: `/dl/${sn}/books/${b.book_id}`,
+      download_url: `/dl/${sn}/books/${b.book_id}.${b.format}`,
       added_at: b.created_at,
       sort_order: i,
     })),

@@ -52,11 +52,20 @@ app.use('/dl', (req, res, next) => {
 app.use('/api/v1', uploadRoutes);
 app.use('/api/v1', deviceRoutes);
 
-// Serve web frontend
-const frontendOut = path.join(__dirname, '..', 'frontend', 'out');
-const publicDir = path.join(__dirname, '..', 'public');
-const staticDir = fs.existsSync(frontendOut) ? frontendOut : publicDir;
+// Serve web frontend from public/ (Next.js static export)
+const staticDir = path.join(__dirname, '..', 'public');
+console.log(`Static serving from: ${staticDir}`);
+
 app.use(express.static(staticDir));
+
+// Health check for Render
+app.get('/health', (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    serving: 'public',
+    frontendReady: true,
+  });
+});
 
 // SPA fallback
 app.get('*', (_req, res) => {

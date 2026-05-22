@@ -11,6 +11,16 @@ const { validateSN, validateToken, rateLimiter, asyncHandler } = require('../mid
 
 const router = express.Router();
 
+// Fix double-encoded UTF-8 filenames from multer/busboy.
+// Busboy may interpret UTF-8 bytes of the Content-Disposition filename as Latin-1,
+// causing mojibake when those characters are later re-encoded as UTF-8.
+function fixFilenameEncoding(str) {
+  if (!str || /^[\x00-\x7F]*$/.test(str)) return str || '';
+  if (/[一-鿿㐀-䶿぀-ゟ゠-ヿ]/.test(str)) return str;
+  const fixed = Buffer.from(str, 'latin1').toString('utf8');
+  return /[一-鿿]/.test(fixed) ? fixed : str;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: CONFIG.MAX_FILE_SIZE, files: 10 },
@@ -36,11 +46,11 @@ router.post('/books/upload',
     const bookId = `b_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
     const ext = path.extname(req.file.originalname).toLowerCase();
     const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
-    const title = path.basename(req.file.originalname, ext);
+    const title = fixFilenameEncoding(path.basename(req.file.originalname, ext));
     await ensureDirs(sn);
 
     const fsp = require('fs/promises');
-    const destPath = bookPath(sn, bookId);
+    const destPath = bookPath(sn, bookId, format);
     await fsp.writeFile(destPath, req.file.buffer);
 
     const checksum = await sha256File(destPath);
@@ -66,7 +76,7 @@ router.post('/books/upload',
       format,
       checksum: `sha256:${checksum}`,
       cover_url: `/dl/${sn}/covers/${bookId}.jpg`,
-      download_url: `/dl/${sn}/books/${bookId}`,
+      download_url: `/dl/${sn}/books/${bookId}.${format}`,
     });
   })
 );
@@ -94,8 +104,8 @@ router.post('/books/batch-upload',
         const bookId = `b_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
         const ext = path.extname(file.originalname).toLowerCase();
         const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
-        const title = path.basename(file.originalname, ext);
-        const destPath = bookPath(sn, bookId);
+        const title = fixFilenameEncoding(path.basename(file.originalname, ext));
+        const destPath = bookPath(sn, bookId, format);
         await fsp.writeFile(destPath, file.buffer);
         const checksum = await sha256File(destPath);
 

@@ -19,7 +19,7 @@ interface UploadTabProps {
 }
 
 export function UploadTab({ onUploadComplete }: UploadTabProps) {
-  const { deviceSN } = useSN()
+  const { deviceSN, isValidSN } = useSN()
   const [useAccessToken, setUseAccessToken] = useState(false)
   const [accessToken, setAccessToken] = useState("")
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
@@ -43,7 +43,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
     if (acceptedFiles.length === 1) {
       const file = acceptedFiles[0]
       const fileEntry = newFiles[0]
-      uploadBook(deviceSN || "default", file, token, (loaded, total) => {
+      uploadBook(deviceSN, file, token, (loaded, total) => {
         setTotalProgress(Math.round((loaded / total) * 100))
       })
         .then((result) => {
@@ -66,7 +66,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
           )
         })
     } else if (acceptedFiles.length > 1) {
-      uploadBooks(deviceSN || "default", acceptedFiles, token, (loaded, total) => {
+      uploadBooks(deviceSN, acceptedFiles, token, (loaded, total) => {
         setTotalProgress(Math.round((loaded / total) * 100))
       })
         .then((result) => {
@@ -106,15 +106,22 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
       'application/epub+zip': ['.epub'],
       'application/pdf': ['.pdf']
     },
-    maxSize: 500 * 1024 * 1024, // 500MB
-    disabled: !deviceSN,
+    maxSize: 500 * 1024 * 1024,
+    disabled: !isValidSN,
   })
 
   return (
-    <div className="space-y-6">
-      {!deviceSN && (
-        <div className="px-4 py-3 bg-secondary/30 border border-secondary text-muted-foreground text-sm">
-          请先在顶部输入设备 SN 或通过 BLE 连接设备
+    <div className="space-y-4 sm:space-y-6">
+      {!isValidSN && (
+        <div className={`px-3 py-2.5 sm:px-4 sm:py-3 border text-xs sm:text-sm
+          ${deviceSN && !isValidSN
+            ? "bg-destructive/10 border-destructive text-destructive"
+            : "bg-secondary/30 border-secondary text-muted-foreground"
+          }`}>
+          {deviceSN && !isValidSN
+            ? "SN 格式无效。序列号须以字母或数字开头，仅包含字母、数字和连字符(-)，长度 1-64 位"
+            : "请先在顶部输入设备 SN 或通过 BLE 连接设备"
+          }
         </div>
       )}
 
@@ -122,9 +129,9 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
       <div
         {...getRootProps()}
         className={`
-          border-2 border-dashed p-12 text-center cursor-pointer
+          border-2 border-dashed p-4 sm:p-12 text-center cursor-pointer
           transition-all duration-200 relative
-          ${!deviceSN ? "opacity-50 cursor-not-allowed" : ""}
+          ${!isValidSN ? "opacity-50 cursor-not-allowed" : ""}
           ${isDragActive
             ? "border-accent bg-accent/10"
             : "border-secondary hover:border-accent/50 bg-card/50"
@@ -134,18 +141,15 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
         <input {...getInputProps()} />
 
         {/* Pixel Upload Icon */}
-        <div className="mb-6 flex justify-center">
+        <div className="mb-3 sm:mb-6 flex justify-center">
           <div className="relative">
-            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" className="text-primary">
-              {/* Arrow body */}
+            <svg width="40" height="40" viewBox="0 0 64 64" fill="none" className="text-primary sm:w-16 sm:h-16">
               <rect x="28" y="24" width="8" height="24" fill="currentColor"/>
-              {/* Arrow head */}
               <rect x="20" y="24" width="8" height="4" fill="currentColor"/>
               <rect x="36" y="24" width="8" height="4" fill="currentColor"/>
               <rect x="24" y="20" width="8" height="4" fill="currentColor"/>
               <rect x="32" y="20" width="8" height="4" fill="currentColor"/>
               <rect x="28" y="16" width="8" height="4" fill="currentColor"/>
-              {/* Base line */}
               <rect x="16" y="52" width="32" height="4" fill="currentColor"/>
             </svg>
             {isDragActive && (
@@ -154,24 +158,24 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
           </div>
         </div>
 
-        <p className="text-xl text-primary mb-2 tracking-wide">
+        <p className="text-sm sm:text-xl text-primary mb-1 sm:mb-2 tracking-wide">
           {isDragActive ? "松开以上传文件" : "拖拽文件到此处，或点击选择"}
         </p>
-        <p className="text-muted-foreground text-sm tracking-wider">
+        <p className="text-muted-foreground text-xs sm:text-sm tracking-wider">
           支持 EPUB / PDF / TXT，单文件最大 500MB
         </p>
 
         {/* Decorative corners */}
-        <div className="absolute top-0 left-0 w-4 h-4 border-l-2 border-t-2 border-accent" />
-        <div className="absolute top-0 right-0 w-4 h-4 border-r-2 border-t-2 border-accent" />
-        <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-accent" />
-        <div className="absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2 border-accent" />
+        <div className="absolute top-0 left-0 w-3 h-3 sm:w-4 sm:h-4 border-l-2 border-t-2 border-accent" />
+        <div className="absolute top-0 right-0 w-3 h-3 sm:w-4 sm:h-4 border-r-2 border-t-2 border-accent" />
+        <div className="absolute bottom-0 left-0 w-3 h-3 sm:w-4 sm:h-4 border-l-2 border-b-2 border-accent" />
+        <div className="absolute bottom-0 right-0 w-3 h-3 sm:w-4 sm:h-4 border-r-2 border-b-2 border-accent" />
       </div>
 
       {/* Global progress bar */}
       {uploadedFiles.some(f => f.status === "uploading") && totalSize > 0 && (
         <div className="space-y-1">
-          <div className="flex justify-between text-sm text-muted-foreground">
+          <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
             <span>上传进度</span>
             <span>{totalProgress}% ({formatSize(totalSize)})</span>
           </div>
@@ -185,10 +189,10 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
       )}
 
       {/* Access Token Option */}
-      <label className="flex items-center gap-3 cursor-pointer group">
+      <label className="flex items-center gap-2 sm:gap-3 cursor-pointer group">
         <div
           className={`
-            w-5 h-5 border-2 flex items-center justify-center transition-colors
+            w-5 h-5 border-2 flex items-center justify-center transition-colors flex-shrink-0
             ${useAccessToken
               ? "bg-primary border-primary"
               : "bg-input border-secondary group-hover:border-accent"
@@ -206,7 +210,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
             </svg>
           )}
         </div>
-        <span className="text-foreground">使用访问令牌</span>
+        <span className="text-foreground text-sm">使用访问令牌</span>
       </label>
 
       {useAccessToken && (
@@ -214,7 +218,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
           type="text"
           value={accessToken}
           onChange={(e) => setAccessToken(e.target.value)}
-          className="bg-input border-2 border-secondary px-3 py-2 text-foreground
+          className="bg-input border-2 border-secondary px-3 py-2.5 text-foreground
             focus:border-accent focus:outline-none w-full max-w-xs text-sm"
           placeholder="输入访问令牌"
         />
@@ -222,12 +226,12 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
 
       {/* Uploaded Files List */}
       {uploadedFiles.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           {uploadedFiles.map((file) => (
             <div
               key={file.id}
               className={`
-                border-l-4 px-4 py-3 bg-card flex items-center justify-between
+                border-l-4 px-3 sm:px-4 py-2 sm:py-3 bg-card flex items-center gap-2
                 ${file.status === "success"
                   ? "border-success"
                   : file.status === "error"
@@ -236,20 +240,20 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
                 }
               `}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 {file.status === "uploading" && (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 flex-shrink-0">
                     {[...Array(3)].map((_, i) => (
                       <div
                         key={i}
-                        className="w-2 h-2 bg-accent animate-pulse"
+                        className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-accent animate-pulse"
                         style={{ animationDelay: `${i * 0.2}s` }}
                       />
                     ))}
                   </div>
                 )}
                 {file.status === "success" && (
-                  <svg width="16" height="16" viewBox="0 0 16 16" className="text-success">
+                  <svg width="14" height="14" viewBox="0 0 16 16" className="text-success flex-shrink-0">
                     <rect x="2" y="8" width="2" height="2" fill="currentColor"/>
                     <rect x="4" y="10" width="2" height="2" fill="currentColor"/>
                     <rect x="6" y="8" width="2" height="2" fill="currentColor"/>
@@ -258,10 +262,18 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
                     <rect x="12" y="2" width="2" height="2" fill="currentColor"/>
                   </svg>
                 )}
-                <span className="text-foreground">
-                  {file.name} — {file.status === "success" ? "上传成功" : file.status === "error" ? `上传失败: ${file.error}` : "上传中..."}
+                {file.status === "error" && (
+                  <svg width="14" height="14" viewBox="0 0 16 16" className="text-destructive flex-shrink-0">
+                    <rect x="2" y="2" width="12" height="12" fill="currentColor"/>
+                  </svg>
+                )}
+                <span className="text-foreground text-xs sm:text-sm truncate">
+                  {file.name}
                 </span>
               </div>
+              <span className="text-xs text-muted-foreground flex-shrink-0 hidden sm:inline">
+                {file.status === "success" ? "上传成功" : file.status === "error" ? `失败` : "上传中..."}
+              </span>
             </div>
           ))}
         </div>

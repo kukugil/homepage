@@ -1,7 +1,7 @@
 // Simple integration test script — run with: node test/test.js
 const http = require('http');
 
-const BASE = 'http://localhost:3000';
+const BASE = 'http://localhost:3001';
 const SN = 'SN-TEST-001';
 
 function req(method, path, body, headers = {}) {
@@ -71,7 +71,7 @@ async function run() {
 
   // 5. HEAD request for Range support
   const headResp = await new Promise((resolve) => {
-    const r = http.request(`${BASE}/dl/${SN}/books/${bookId}`, { method: 'HEAD' }, (res) => {
+    const r = http.request(`${BASE}/dl/${SN}/books/${bookId}.txt`, { method: 'HEAD' }, (res) => {
       resolve({ status: res.statusCode, headers: res.headers });
     });
     r.end();
@@ -81,7 +81,7 @@ async function run() {
 
   // 6. Range request
   const rangeResp = await new Promise((resolve) => {
-    const r = http.request(`${BASE}/dl/${SN}/books/${bookId}`, {
+    const r = http.request(`${BASE}/dl/${SN}/books/${bookId}.txt`, {
       headers: { 'Range': 'bytes=0-4' },
     }, (res) => {
       let d = '';

@@ -49,19 +49,19 @@ function SortableBook({ book, onDelete }: { book: Book; onDelete: (id: string) =
       ref={setNodeRef}
       style={style}
       className={`
-        bg-card border-2 border-secondary p-3 sm:p-4
+        bg-card border-2 border-secondary p-2.5 sm:p-4
         transition-colors hover:border-accent/50
         ${isDragging ? "opacity-50 border-accent" : ""}
       `}
     >
-      <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* Drag Handle */}
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-secondary/50 flex-shrink-0"
+          className="cursor-grab active:cursor-grabbing p-2 sm:p-1 hover:bg-secondary/50 flex-shrink-0 touch-none"
         >
-          <svg width="12" height="20" viewBox="0 0 12 20" className="text-muted-foreground">
+          <svg width="12" height="18" viewBox="0 0 12 20" className="text-muted-foreground sm:w-3">
             <rect x="2" y="2" width="2" height="2" fill="currentColor"/>
             <rect x="8" y="2" width="2" height="2" fill="currentColor"/>
             <rect x="2" y="6" width="2" height="2" fill="currentColor"/>
@@ -76,8 +76,8 @@ function SortableBook({ book, onDelete }: { book: Book; onDelete: (id: string) =
         </button>
 
         {/* Book Cover Placeholder */}
-        <div className="w-10 h-14 sm:w-12 sm:h-16 bg-secondary border border-border flex items-center justify-center flex-shrink-0">
-          <svg width="20" height="20" viewBox="0 0 24 24" className="text-muted-foreground">
+        <div className="w-9 h-12 sm:w-12 sm:h-16 bg-secondary border border-border flex items-center justify-center flex-shrink-0">
+          <svg width="16" height="16" viewBox="0 0 24 24" className="text-muted-foreground">
             <rect x="4" y="2" width="16" height="2" fill="currentColor"/>
             <rect x="4" y="20" width="16" height="2" fill="currentColor"/>
             <rect x="4" y="2" width="2" height="20" fill="currentColor"/>
@@ -86,33 +86,22 @@ function SortableBook({ book, onDelete }: { book: Book; onDelete: (id: string) =
           </svg>
         </div>
 
-        {/* Book Info & Actions */}
+        {/* Book Info */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-foreground text-base sm:text-lg truncate">{book.title}</h3>
+          <h3 className="text-foreground text-sm sm:text-lg truncate">{book.title}</h3>
           <p className="text-muted-foreground text-xs sm:text-sm">
             {book.author} · {book.type} · {book.size}
           </p>
-
-          {/* Mobile Actions */}
-          <div className="flex gap-2 mt-2 sm:hidden">
-            <button
-              onClick={() => onDelete(book.id)}
-              className="px-3 py-1.5 bg-destructive text-destructive-foreground text-xs hover:bg-destructive/80 pixel-button"
-            >
-              删除
-            </button>
-          </div>
         </div>
 
-        {/* Desktop Actions */}
-        <div className="hidden sm:flex gap-2 flex-shrink-0">
-          <button
-            onClick={() => onDelete(book.id)}
-            className="px-4 py-2 bg-destructive text-destructive-foreground text-sm hover:bg-destructive/80 pixel-button"
-          >
-            删除
-          </button>
-        </div>
+        {/* Delete button — always visible on mobile, icons on desktop */}
+        <button
+          onClick={() => onDelete(book.id)}
+          className="flex-shrink-0 px-3 py-2 sm:px-4 sm:py-2 bg-destructive text-destructive-foreground text-xs sm:text-sm hover:bg-destructive/80 pixel-button"
+        >
+          <span className="sm:hidden">删</span>
+          <span className="hidden sm:inline">删除</span>
+        </button>
       </div>
     </div>
   )
@@ -133,7 +122,7 @@ interface BookListTabProps {
 }
 
 export function BookListTab({ refreshKey }: BookListTabProps) {
-  const { deviceSN } = useSN()
+  const { deviceSN, isValidSN } = useSN()
   const [books, setBooks] = useState<Book[]>([])
   const [hasChanges, setHasChanges] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -147,7 +136,7 @@ export function BookListTab({ refreshKey }: BookListTabProps) {
   )
 
   const loadBooks = useCallback(async () => {
-    if (!deviceSN) {
+    if (!deviceSN || !isValidSN) {
       setBooks([])
       return
     }
@@ -162,7 +151,7 @@ export function BookListTab({ refreshKey }: BookListTabProps) {
     } finally {
       setLoading(false)
     }
-  }, [deviceSN])
+  }, [deviceSN, isValidSN])
 
   useEffect(() => {
     loadBooks()
@@ -204,42 +193,49 @@ export function BookListTab({ refreshKey }: BookListTabProps) {
     loadBooks()
   }
 
-  if (!deviceSN) {
+  if (!isValidSN) {
     return (
-      <div className="text-center py-16 border-2 border-dashed border-secondary">
-        <p className="text-muted-foreground">请先输入设备 SN</p>
+      <div className={`text-center py-12 sm:py-16 border-2 border-dashed
+        ${deviceSN && !isValidSN ? "border-destructive" : "border-secondary"}`}>
+        <p className={`text-sm sm:text-base
+          ${deviceSN && !isValidSN ? "text-destructive" : "text-muted-foreground"}`}>
+          {deviceSN && !isValidSN
+            ? "SN 格式无效。序列号须以字母或数字开头，仅包含字母、数字和连字符(-)"
+            : "请先输入设备 SN"
+          }
+        </p>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="text-center py-16 border-2 border-dashed border-secondary">
-        <div className="flex justify-center gap-2 mb-4">
+      <div className="text-center py-12 sm:py-16 border-2 border-dashed border-secondary">
+        <div className="flex justify-center gap-2 mb-3 sm:mb-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="w-3 h-3 bg-accent animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
           ))}
         </div>
-        <p className="text-muted-foreground">加载中...</p>
+        <p className="text-muted-foreground text-sm sm:text-base">加载中...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {error && (
-        <div className="px-4 py-2 bg-destructive/20 border border-destructive text-destructive text-sm">
+        <div className="px-3 sm:px-4 py-2 bg-destructive/20 border border-destructive text-destructive text-xs sm:text-sm">
           {error}
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <button
           onClick={handleRefresh}
-          className="px-4 py-2 bg-secondary text-foreground text-sm hover:bg-secondary/70 pixel-button flex items-center gap-2"
+          className="flex-1 sm:flex-none px-3 sm:px-4 py-3 sm:py-2 bg-secondary text-foreground text-sm hover:bg-secondary/70 pixel-button flex items-center justify-center gap-1.5 sm:gap-2"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" className="text-current">
+          <svg width="14" height="14" viewBox="0 0 16 16" className="text-current sm:w-4 sm:h-4">
             <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
             <rect x="9" y="3" width="2" height="2" fill="currentColor"/>
             <rect x="11" y="5" width="2" height="2" fill="currentColor"/>
@@ -253,25 +249,25 @@ export function BookListTab({ refreshKey }: BookListTabProps) {
             <rect x="3" y="5" width="2" height="2" fill="currentColor"/>
             <rect x="5" y="3" width="2" height="2" fill="currentColor"/>
           </svg>
-          刷新列表
+          刷新
         </button>
         <button
           onClick={handleSave}
           disabled={!hasChanges}
           className={`
-            px-4 py-2 text-sm pixel-button flex items-center gap-2
+            flex-1 sm:flex-none px-3 sm:px-4 py-3 sm:py-2 text-sm pixel-button flex items-center justify-center gap-1.5 sm:gap-2
             ${hasChanges
               ? "bg-accent text-accent-foreground hover:bg-accent/80"
               : "bg-muted text-muted-foreground cursor-not-allowed"
             }
           `}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" className="text-current">
+          <svg width="14" height="14" viewBox="0 0 16 16" className="text-current sm:w-4 sm:h-4">
             <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
             <rect x="5" y="2" width="6" height="4" fill="currentColor"/>
             <rect x="4" y="9" width="8" height="5" fill="currentColor"/>
           </svg>
-          保存排序
+          保存
         </button>
       </div>
 
@@ -283,7 +279,7 @@ export function BookListTab({ refreshKey }: BookListTabProps) {
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={books.map(b => b.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {books.map((book) => (
                 <SortableBook key={book.id} book={book} onDelete={handleDelete} />
               ))}
@@ -291,22 +287,22 @@ export function BookListTab({ refreshKey }: BookListTabProps) {
           </SortableContext>
         </DndContext>
       ) : (
-        <div className="text-center py-16 border-2 border-dashed border-secondary">
-          <svg width="48" height="48" viewBox="0 0 48 48" className="mx-auto mb-4 text-muted-foreground">
+        <div className="text-center py-12 sm:py-16 border-2 border-dashed border-secondary">
+          <svg width="32" height="32" viewBox="0 0 48 48" className="mx-auto mb-3 sm:mb-4 text-muted-foreground sm:w-12 sm:h-12">
             <rect x="8" y="4" width="32" height="40" fill="none" stroke="currentColor" strokeWidth="2"/>
             <rect x="16" y="12" width="16" height="2" fill="currentColor"/>
             <rect x="16" y="18" width="12" height="2" fill="currentColor"/>
             <rect x="16" y="24" width="16" height="2" fill="currentColor"/>
           </svg>
-          <p className="text-muted-foreground">暂无书籍</p>
+          <p className="text-muted-foreground text-sm sm:text-base">暂无书籍</p>
         </div>
       )}
 
       {/* Stats */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground border-t border-secondary pt-4">
+      <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground border-t border-secondary pt-2.5 sm:pt-4">
         <span>共 {books.length} 本书籍</span>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-accent" />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-accent" />
           <span>拖拽可排序</span>
         </div>
       </div>
