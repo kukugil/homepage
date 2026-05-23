@@ -96,7 +96,11 @@ function SortableBook({ book, onDelete }: { book: Book; onDelete: (id: string) =
 
         {/* Delete button — always visible on mobile, icons on desktop */}
         <button
-          onClick={() => onDelete(book.id)}
+          onClick={() => {
+            if (window.confirm(`确定要删除「${book.title}」吗？此操作不可恢复。`)) {
+              onDelete(book.id)
+            }
+          }}
           className="flex-shrink-0 px-3 py-2 sm:px-4 sm:py-2 bg-destructive text-destructive-foreground text-xs sm:text-sm hover:bg-destructive/80 pixel-button"
         >
           <span className="sm:hidden">删</span>

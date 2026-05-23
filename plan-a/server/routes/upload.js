@@ -21,8 +21,19 @@ function fixFilenameEncoding(str) {
   return /[一-鿿]/.test(fixed) ? fixed : str;
 }
 
+const uploadDir = path.join(CONFIG.STORAGE_ROOT, 'tmp');
+
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      require('fs').mkdirSync(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    },
+    filename: (_req, file, cb) => {
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+      cb(null, unique + path.extname(file.originalname));
+    },
+  }),
   limits: { fileSize: CONFIG.MAX_FILE_SIZE, files: 10 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -51,7 +62,8 @@ router.post('/books/upload',
 
     const fsp = require('fs/promises');
     const destPath = bookPath(sn, bookId, format);
-    await fsp.writeFile(destPath, req.file.buffer);
+    await fsp.copyFile(req.file.path, destPath);
+    await fsp.unlink(req.file.path).catch(() => {});
 
     const checksum = await sha256File(destPath);
 
@@ -106,7 +118,8 @@ router.post('/books/batch-upload',
         const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
         const title = fixFilenameEncoding(path.basename(file.originalname, ext));
         const destPath = bookPath(sn, bookId, format);
-        await fsp.writeFile(destPath, file.buffer);
+        await fsp.copyFile(file.path, destPath);
+        await fsp.unlink(file.path).catch(() => {});
         const checksum = await sha256File(destPath);
 
         extractCover(destPath, sn, bookId, format, title).catch(err =>

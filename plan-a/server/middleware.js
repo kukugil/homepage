@@ -46,6 +46,24 @@ function rateLimiter() {
   };
 }
 
+function basicAuth(req, res, next) {
+  const PASSWORD = process.env.ADMIN_PASSWORD;
+  if (!PASSWORD) return next();
+
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Basic ')) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="E-Reader", charset="UTF-8"');
+    return res.status(401).send('Authentication required');
+  }
+
+  const [, pass] = Buffer.from(auth.slice(6), 'base64').toString().split(':');
+  if (pass !== PASSWORD) {
+    return res.status(401).send('Invalid credentials');
+  }
+
+  next();
+}
+
 function errorHandler(err, req, res, _next) {
   console.error(`[${new Date().toISOString()}] ${req.method} ${req.path}:`, err.message);
   if (err.type === 'entity.too.large') {
@@ -66,4 +84,4 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
-module.exports = { validateSN, validateToken, rateLimiter, errorHandler, asyncHandler };
+module.exports = { validateSN, validateToken, rateLimiter, basicAuth, errorHandler, asyncHandler };

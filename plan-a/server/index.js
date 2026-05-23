@@ -8,7 +8,6 @@ const { sanitizeSN } = require('./storage');
 
 const fs = require('fs');
 
-// Ensure storage root directory exists
 if (!fs.existsSync(CONFIG.STORAGE_ROOT)) {
   fs.mkdirSync(CONFIG.STORAGE_ROOT, { recursive: true });
 }
@@ -18,10 +17,9 @@ if (!fs.existsSync(CONFIG.DL_DIR)) {
 
 const app = express();
 
-// Body parsing
 app.use(express.json());
 
-// Static file serving for /dl/ — device-facing read-only access
+// Static file serving for /dl/
 app.use('/dl', (req, res, next) => {
   const seg = req.path.split('/').filter(Boolean);
   if (seg.length > 0) {
@@ -48,27 +46,28 @@ app.use('/dl', (req, res, next) => {
   },
 }));
 
+// Health check
+app.get('/health', (_req, res) => {
+  res.status(200).json({ ok: true, serving: 'public', frontendReady: true });
+});
+
 // API routes
 app.use('/api/v1', uploadRoutes);
 app.use('/api/v1', deviceRoutes);
 
-// Serve web frontend from public/ (Next.js static export)
+// Serve web frontend
 const staticDir = path.join(__dirname, '..', 'public');
-console.log(`Static serving from: ${staticDir}`);
-
 app.use(express.static(staticDir));
 
-// Health check for Render
-app.get('/health', (_req, res) => {
-  res.status(200).json({
-    ok: true,
-    serving: 'public',
-    frontendReady: true,
-  });
-});
-
-// SPA fallback
-app.get('*', (_req, res) => {
+// SPA fallback — only for page routes, not static assets
+app.get('*', (req, res) => {
+  const p = req.path;
+  if (/\.(js|css|json|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|map|webmanifest)(\?.*)?$/.test(p)) {
+    return res.status(404).send('Not found');
+  }
+  if (p.startsWith('/_next/')) {
+    return res.status(404).send('Not found');
+  }
   const indexPath = path.join(staticDir, 'index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
@@ -77,16 +76,14 @@ app.get('*', (_req, res) => {
   }
 });
 
-// Error handler
 app.use(errorHandler);
 
 const port = parseInt(process.env.PORT, 10) || 3001;
 app.listen(port, () => {
-  console.log(`E-Reader server running on http://0.0.0.0:${port}`);
-  console.log(`Storage: ${CONFIG.DL_DIR}`);
+  console.log('E-Reader server running on http://0.0.0.0:' + port);
+  console.log('Storage:', CONFIG.DL_DIR);
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('Received SIGTERM, shutting down...');
   require('./db').closeDb();
@@ -98,7 +95,7 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 process.on('exit', (code) => {
-  console.log(`Process exited with code: ${code}`);
+  console.log('Process exited with code:', code);
 });
 process.on('uncaughtException', (err) => {
   console.error('Uncaught exception:', err.message);
