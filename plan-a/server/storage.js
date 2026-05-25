@@ -16,9 +16,26 @@ function coversDir(sn) {
   return path.join(snDir(sn), 'covers');
 }
 
-function bookPath(sn, bookId, format) {
-  const name = format ? `${bookId}.${format}` : bookId;
-  return path.join(booksDir(sn), name);
+function sanitizeTitle(title) {
+  if (!title) return 'untitled'
+  return title
+    .replace(/[\/\\:*?"<>|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100) || 'untitled'
+}
+
+async function bookPath(sn, title, format) {
+  const safe = sanitizeTitle(title)
+  const ext = format ? `.${format}` : ''
+  let name = `${safe}${ext}`
+  const dir = booksDir(sn)
+  let counter = 1
+  while (await fileExists(path.join(dir, name))) {
+    name = `${safe}_${counter}${ext}`
+    counter++
+  }
+  return path.join(dir, name)
 }
 
 function coverPath(sn, bookId) {
@@ -81,6 +98,6 @@ async function atomicWrite(filePath, content) {
 
 module.exports = {
   snDir, booksDir, coversDir, bookPath, coverPath, manifestPath, manifestTmpPath,
-  ensureDirs, fileExists, getFileSize, sha256File, sanitizeSN, sanitizeFilename,
+  ensureDirs, fileExists, getFileSize, sha256File, sanitizeSN, sanitizeFilename, sanitizeTitle,
   removeDir, atomicWrite,
 };

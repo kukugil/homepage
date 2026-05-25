@@ -4,7 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const CONFIG = require('../config');
 const db = require('../db');
-const { ensureDirs, bookPath, sha256File } = require('../storage');
+const { ensureDirs, bookPath, sha256File, sanitizeTitle } = require('../storage');
 const { regenerateManifest } = require('../manifest');
 const { extractCover } = require('../cover');
 const { validateSN, validateToken, rateLimiter, asyncHandler } = require('../middleware');
@@ -61,7 +61,7 @@ router.post('/books/upload',
     await ensureDirs(sn);
 
     const fsp = require('fs/promises');
-    const destPath = bookPath(sn, bookId, format);
+    const destPath = await bookPath(sn, title, format);
     await fsp.copyFile(req.file.path, destPath);
     await fsp.unlink(req.file.path).catch(() => {});
 
@@ -88,7 +88,7 @@ router.post('/books/upload',
       format,
       checksum: `sha256:${checksum}`,
       cover_url: `/dl/${sn}/covers/${bookId}.jpg`,
-      download_url: `/dl/${sn}/books/${bookId}.${format}`,
+      download_url: `/dl/${sn}/books/${encodeURIComponent(sanitizeTitle(title))}.${format}`,
     });
   })
 );
@@ -117,7 +117,7 @@ router.post('/books/batch-upload',
         const ext = path.extname(file.originalname).toLowerCase();
         const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
         const title = fixFilenameEncoding(path.basename(file.originalname, ext));
-        const destPath = bookPath(sn, bookId, format);
+        const destPath = await bookPath(sn, title, format);
         await fsp.copyFile(file.path, destPath);
         await fsp.unlink(file.path).catch(() => {});
         const checksum = await sha256File(destPath);

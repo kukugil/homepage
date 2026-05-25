@@ -17,6 +17,7 @@ if (!fs.existsSync(CONFIG.DL_DIR)) {
 
 const app = express();
 
+app.set('etag', false);
 app.use(express.json());
 
 // Static file serving for /dl/
@@ -43,6 +44,10 @@ app.use('/dl', (req, res, next) => {
     if (filePath.endsWith('.json')) {
       res.header('Content-Type', 'application/json; charset=utf-8');
     }
+    if (filePath.includes('/books/')) {
+      const filename = path.basename(filePath);
+      res.header('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    }
   },
 }));
 
@@ -51,7 +56,12 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ ok: true, serving: 'public', frontendReady: true });
 });
 
-// API routes
+// API routes — disable caching
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.removeHeader('ETag');
+  next();
+});
 app.use('/api/v1', uploadRoutes);
 app.use('/api/v1', deviceRoutes);
 
@@ -79,25 +89,28 @@ app.get('*', (req, res) => {
 app.use(errorHandler);
 
 const port = parseInt(process.env.PORT, 10) || 3001;
-app.listen(port, () => {
+const server = app.listen(port, '0.0.0.0', () => {
   console.log('E-Reader server running on http://0.0.0.0:' + port);
   console.log('Storage:', CONFIG.DL_DIR);
 });
+server.keepAliveTimeout = 120000;
+server.headersTimeout = 120000;
 
-process.on('SIGTERM', () => {
-  console.log('Received SIGTERM, shutting down...');
-  require('./db').closeDb();
-  process.exit(0);
-});
-process.on('SIGINT', () => {
-  console.log('Received SIGINT, shutting down...');
-  require('./db').closeDb();
-  process.exit(0);
-});
+function gracefulShutdown(signal) {
+  console.log('Received ' + signal + ', shutting down...');
+  server.close(() => {
+    require('./db').closeDb();
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 5000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('exit', (code) => {
   console.log('Process exited with code:', code);
 });
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err.message);
-  process.exit(1);
+  console.error('Uncaught exception:', err.message, err.stack);
+  gracefulShutdown('uncaughtException');
 });
