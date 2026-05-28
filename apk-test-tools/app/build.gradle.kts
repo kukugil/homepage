@@ -3,6 +3,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val platformKeystore = rootProject.file("keystore/platform.keystore")
+val usePlatformSigning = platformKeystore.exists()
+
 android {
     namespace = "com.example.apktesttools"
     compileSdk = 34
@@ -14,9 +17,6 @@ android {
         versionCode = 3
         versionName = "3.0"
     }
-
-    val platformKeystore = rootProject.file("keystore/platform.keystore")
-    val usePlatformSigning = platformKeystore.exists()
 
     signingConfigs {
         if (usePlatformSigning) {
