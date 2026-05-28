@@ -15,18 +15,25 @@ android {
         versionName = "3.0"
     }
 
+    val platformKeystore = rootProject.file("keystore/platform.keystore")
+    val usePlatformSigning = platformKeystore.exists()
+
     signingConfigs {
-        create("platform") {
-            storeFile = rootProject.file("keystore/platform.keystore")
-            storePassword = "android"
-            keyAlias = "platform"
-            keyPassword = "android"
+        if (usePlatformSigning) {
+            create("platform") {
+                storeFile = platformKeystore
+                storePassword = "android"
+                keyAlias = "platform"
+                keyPassword = "android"
+            }
         }
     }
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("platform")
+            if (usePlatformSigning) {
+                signingConfig = signingConfigs.getByName("platform")
+            }
         }
         release {
             isMinifyEnabled = false
@@ -34,7 +41,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("platform")
+            if (usePlatformSigning) {
+                signingConfig = signingConfigs.getByName("platform")
+            }
         }
     }
 
@@ -67,6 +76,18 @@ tasks.register("installSystemApp") {
     group = "deploy"
     description = "签名 APK 并推送到 /system/priv-app/"
     dependsOn("assembleDebug")
+
+    doFirst {
+        if (!platformKeystore.exists()) {
+            throw GradleException(
+                "缺少 keystore/platform.keystore。\n" +
+                "请将 platform.pk8 和 platform.x509.pem 放入 keystore/ 目录，然后运行:\n" +
+                "  openssl pkcs8 -in keystore/platform.pk8 -inform DER -outform PEM -out keystore/platform.pem -nocrypt\n" +
+                "  openssl pkcs12 -export -in keystore/platform.x509.pem -inkey keystore/platform.pem -out keystore/platform.p12 -password pass:android -name platform\n" +
+                "  keytool -importkeystore -destkeystore keystore/platform.keystore -deststorepass android -srckeystore keystore/platform.p12 -srcstoretype PKCS12 -srcstorepass android -noprompt"
+            )
+        }
+    }
 
     doLast {
         val apkDir = layout.buildDirectory.dir("outputs/apk/debug")
