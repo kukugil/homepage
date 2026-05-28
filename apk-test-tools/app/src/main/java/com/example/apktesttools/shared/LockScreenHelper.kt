@@ -24,7 +24,7 @@ object LockScreenHelper {
             val lpu = lockPatternUtilsClass.getConstructor(Context::class.java)
                 .newInstance(context)
 
-            val userId = Process.myUserId()
+            val userId = Process.myUid() / 100000
             val clearMethod = lockPatternUtilsClass.getMethod(
                 "clearLock", ByteArray::class.java, Int::class.javaPrimitiveType
             )

@@ -216,7 +216,7 @@ class WifiTestService : ForegroundServiceBase() {
                 (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager)
                     .notify(notificationId + 1, notification)
 
-                stopForeground(android.app.Service.STOP_FOREGROUND_NOT_REMOVE)
+                stopForeground(false)
                 stopSelf()
             }
         }

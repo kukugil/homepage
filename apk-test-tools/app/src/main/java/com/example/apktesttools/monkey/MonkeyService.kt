@@ -1,9 +1,7 @@
 package com.example.apktesttools.monkey
 
-import android.app.ActivityManager
 import android.app.PendingIntent
 import android.content.Intent
-import com.example.apktesttools.MainActivity
 import com.example.apktesttools.R
 import com.example.apktesttools.monkey.model.TestConfig
 import com.example.apktesttools.shared.ForegroundServiceBase
@@ -105,12 +103,16 @@ class MonkeyService : ForegroundServiceBase() {
                     )
                 }
 
-                // ★ v3.0：用 ActivityManager.forceStopPackage 替代 am force-stop
-                // FORCE_STOP_PACKAGES 是 signature 级权限，system UID 持有
-                val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+                // ★ v3.0：用反射调用 ActivityManager.forceStopPackage
+                // 该 API 是 @hide，system UID 具有 FORCE_STOP_PACKAGES 权限
                 try {
-                    am.forceStopPackage(config.packageName)
-                } catch (_: Exception) {}
+                    val am = getSystemService(ACTIVITY_SERVICE)
+                    val method = am.javaClass.getMethod("forceStopPackage", String::class.java)
+                    method.invoke(am, config.packageName)
+                } catch (_: Exception) {
+                    // 反射失败降级为 shell 命令
+                    SystemCommandExecutor("am force-stop ${config.packageName}").execute()
+                }
             }
 
             // 生成 HTML 报告
@@ -141,7 +143,7 @@ class MonkeyService : ForegroundServiceBase() {
                 (getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager)
                     .notify(notificationId + 1, notification)
 
-                stopForeground(android.app.Service.STOP_FOREGROUND_NOT_REMOVE)
+                stopForeground(false)
                 stopSelf()
             }
         }
