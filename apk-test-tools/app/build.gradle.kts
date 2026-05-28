@@ -15,13 +15,26 @@ android {
         versionName = "3.0"
     }
 
+    signingConfigs {
+        create("platform") {
+            storeFile = rootProject.file("keystore/platform.keystore")
+            storePassword = "android"
+            keyAlias = "platform"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("platform")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("platform")
         }
     }
 
@@ -48,4 +61,24 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-service:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+}
+
+tasks.register("installSystemApp") {
+    group = "deploy"
+    description = "签名 APK 并推送到 /system/priv-app/"
+    dependsOn("assembleDebug")
+
+    doLast {
+        val apkDir = layout.buildDirectory.dir("outputs/apk/debug")
+        val apkFile = apkDir.get().file("app-debug.apk").asFile
+        val targetPath = "/system/priv-app/APKTestTools"
+
+        exec { commandLine("adb", "root") }
+        exec { commandLine("adb", "remount") }
+        exec { commandLine("adb", "shell", "mkdir", "-p", targetPath) }
+        exec { commandLine("adb", "push", apkFile.absolutePath, "$targetPath/APKTestTools.apk") }
+        exec { commandLine("adb", "reboot") }
+
+        println("已安装到 $targetPath，设备正在重启...")
+    }
 }
