@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.apktesttools"
+    android:sharedUserId="android.uid.system"
+    coreApp="true">
+
+    <!-- 前台服务 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- WiFi 操作 -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 开机自启 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- ★ v3.0 新增：系统级权限（均为 signature 级，system UID 自动持有） -->
+    <!-- 重启设备 -->
+    <uses-permission android:name="android.permission.REBOOT" />
+    <!-- 读系统日志（logcat） -->
+    <uses-permission android:name="android.permission.READ_LOGS" />
+    <!-- 强制停止应用（替代 kill 命令） -->
+    <uses-permission android:name="android.permission.FORCE_STOP_PACKAGES" />
+    <!-- 写安全设置（禁用锁屏用） -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- 清除/禁用锁屏 -->
+    <uses-permission android:name="android.permission.SET_LOCK_SCREEN_DISABLED" />
+    <!-- 系统 dump 权限（dumpsys 用） -->
+    <uses-permission android:name="android.permission.DUMP" />
+    <!-- 注入事件（monkey 需要） -->
+    <uses-permission android:name="android.permission.INJECT_EVENTS" />
+    <!-- 截图 -->
+    <uses-permission android:name="android.permission.CAPTURE_VIDEO_OUTPUT" />
+    <uses-permission android:name="android.permission.CAPTURE_SECURE_VIDEO_OUTPUT" />
+
+    <!-- 防止休眠 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.APKTestTools"
+        android:persistent="true"
+        tools:targetApi="34">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.ReportViewActivity"
+            android:exported="false" />
+
+        <!-- Monkey 测试 Service -->
+        <service
+            android:name=".monkey.MonkeyService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="automated_monkey_testing" />
+        </service>
+
+        <!-- WiFi 测试 Service -->
+        <service
+            android:name=".wifi.WifiTestService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="automated_wifi_stability_testing" />
+        </service>
+
+        <!-- JobScheduler 兜底 Service -->
+        <service
+            android:name=".wifi.BootCheckJobService"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true" />
+
+        <!-- 开机广播接收器 -->
+        <receiver
+            android:name=".wifi.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+</manifest>

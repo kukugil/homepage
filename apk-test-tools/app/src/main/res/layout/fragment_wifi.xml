@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚠ 测试前请关闭锁屏密码！"
+            android:textColor="#FF9800"
+            android:textSize="13sp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="测试参数"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:layout_width="0dp" android:layout_weight="2" android:text="重启次数" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_max_cycles" android:layout_width="0dp" android:layout_weight="3" android:layout_height="wrap_content" android:inputType="number" android:text="500" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:layout_width="0dp" android:layout_weight="2" android:text="开机等待(秒)" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_delay" android:layout_width="0dp" android:layout_weight="3" android:layout_height="wrap_content" android:inputType="number" android:text="45" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:layout_width="0dp" android:layout_weight="2" android:text="连续失败上限" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_max_failures" android:layout_width="0dp" android:layout_weight="3" android:layout_height="wrap_content" android:inputType="number" android:text="3" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="WiFi 连接测试 (可选)"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="若不填 SSID，则仅检查扫描结果是否非空"
+            android:textSize="12sp"
+            android:textColor="#666"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:layout_width="0dp" android:layout_weight="2" android:text="WiFi 名称" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_ssid" android:layout_width="0dp" android:layout_weight="3" android:layout_height="wrap_content" android:hint="不填则仅测扫描" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:layout_width="0dp" android:layout_weight="2" android:text="WiFi 密码" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_password" android:layout_width="0dp" android:layout_weight="3" android:layout_height="wrap_content" android:inputType="textPassword" android:hint="密码仅存内存" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ℹ 密码仅存内存，不写入文件。如需测连接，请先手动连一次该 WiFi。"
+            android:textSize="11sp"
+            android:textColor="#999"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/btn_start"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="开始测试\n(点击后立即重启)"
+                style="@style/Widget.Material3.Button" />
+
+            <Button
+                android:id="@+id/btn_stop"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="停止测试"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_progress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="当前进度"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/tv_progress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="#333"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tv_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="最近结果"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/tv_recent_results"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:fontFamily="monospace"
+                android:background="#F5F5F5"
+                android:padding="8dp"
+                android:layout_marginBottom="8dp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_export"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="查看导出信息"
+            style="@style/Widget.Material3.Button.TextButton" />
+
+    </LinearLayout>
+</ScrollView>

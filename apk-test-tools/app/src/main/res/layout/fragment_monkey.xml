@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="选择目标应用"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_apps"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="参数设置"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:text="事件次数"
+                android:gravity="center_vertical" />
+            <EditText
+                android:id="@+id/et_event_count"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:inputType="number"
+                android:text="10000" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:text="事件间隔(ms)"
+                android:gravity="center_vertical" />
+            <EditText
+                android:id="@+id/et_throttle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:inputType="number"
+                android:text="200" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:text="Seed (可选)"
+                android:gravity="center_vertical" />
+            <EditText
+                android:id="@+id/et_seed"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:inputType="number"
+                android:hint="留空则随机" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:text="目标Activity"
+                android:gravity="center_vertical" />
+            <EditText
+                android:id="@+id/et_activity"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:hint="不填则测试整个应用" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:text="超时(秒)"
+                android:gravity="center_vertical" />
+            <EditText
+                android:id="@+id/et_timeout"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:inputType="number"
+                android:text="600" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="事件类型占比（必须等于 100%）"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_pct_sum"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="合计: 100%"
+            android:textSize="14sp"
+            android:textColor="#4CAF50"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="4dp">
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:text="触摸" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_pct_touch" android:layout_width="60dp" android:layout_height="wrap_content" android:inputType="number" android:text="70" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="%  " android:gravity="center_vertical" />
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:text="滑动" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_pct_motion" android:layout_width="60dp" android:layout_height="wrap_content" android:inputType="number" android:text="15" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="%" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:text="按键" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_pct_syskeys" android:layout_width="60dp" android:layout_height="wrap_content" android:inputType="number" android:text="10" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="%  " android:gravity="center_vertical" />
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:text="其他" android:gravity="center_vertical" />
+            <EditText android:id="@+id/et_pct_anyevent" android:layout_width="60dp" android:layout_height="wrap_content" android:inputType="number" android:text="5" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="%" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="4dp">
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:text="忽略崩溃" />
+            <Switch android:id="@+id/sw_ignore_crashes" />
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:text="忽略无响应" />
+            <Switch android:id="@+id/sw_ignore_timeouts" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_start"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="开始测试"
+            style="@style/Widget.Material3.Button" />
+
+    </LinearLayout>
+</ScrollView>
