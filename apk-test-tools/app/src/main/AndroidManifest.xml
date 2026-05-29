@@ -2,8 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.apktesttools"
-    android:sharedUserId="android.uid.system"
-    coreApp="true">
+    android:sharedUserId="android.uid.system">
 
     <!-- 前台服务 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
