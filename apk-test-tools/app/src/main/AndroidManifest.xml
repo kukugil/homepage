@@ -48,7 +48,6 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.APKTestTools"
-        android:persistent="true"
         tools:targetApi="34">
 
         <activity
