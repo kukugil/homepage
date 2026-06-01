@@ -1626,11 +1626,13 @@ def interactive_config() -> argparse.Namespace:
     output = ask("报告输出目录", DEFAULT_OUTPUT)
 
     print()
-    print("  --- 连接验证（可选，用于验证恢复后能否连接指定 WiFi）---")
-    ssid = ask("目标 WiFi SSID (留空=仅扫描不连接)", "")
+    print("  --- 连接验证（可选）---")
+    print("  留空 = 自动检测当前连接的 WiFi SSID 和密码")
+    print("  输入 SSID = 手动指定 WiFi")
+    ssid = ask("目标 WiFi SSID [自动检测]: ", "")
     password = ""
     if ssid:
-        password = ask("目标 WiFi 密码", "")
+        password = ask("  目标 WiFi 密码", "")
 
     print()
     print("  --- 高级选项 ---")
@@ -1665,7 +1667,70 @@ def interactive_config() -> argparse.Namespace:
     )
 
 
+def _env_checks():
+    """启动前环境检查：Python / ADB / 设备连接。失败则退出。"""
+    print()
+    print("=" * 55)
+    print("   WiFi 异常自愈能力测试 — 环境检查")
+    print("=" * 55)
+
+    # Python 版本
+    py_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    print(f"   Python {py_ver}  ✓")
+
+    # ADB 可用性
+    try:
+        proc = subprocess.run(
+            ["adb", "version"], capture_output=True, text=True, timeout=5,
+            encoding="utf-8", errors="replace",
+        )
+        if proc.returncode == 0:
+            ver_line = proc.stdout.strip().split("\n")[0] if proc.stdout else "OK"
+            print(f"   ADB {ver_line.split('version')[0].strip() if 'version' in ver_line else '已安装'}  ✓")
+        else:
+            print("   ADB [FAIL] — 未找到 ADB，请确认已安装并加入 PATH")
+            print("     下载: https://developer.android.com/studio/releases/platform-tools")
+            sys.exit(1)
+    except FileNotFoundError:
+        print("   ADB [FAIL] — 未找到 ADB，请确认已安装并加入 PATH")
+        sys.exit(1)
+
+    # 设备连接
+    try:
+        proc = subprocess.run(
+            ["adb", "devices"], capture_output=True, text=True, timeout=10,
+            encoding="utf-8", errors="replace",
+        )
+        lines = [l.strip() for l in proc.stdout.split("\n") if l.strip()]
+        devices = [l for l in lines[1:] if l and "\tdevice" in l] if len(lines) > 1 else []
+        if devices:
+            print(f"   设备 {devices[0].split()[0]}  ✓")
+        else:
+            print("   设备 [FAIL] — 未检测到已连接的设备")
+            print("   当前 adb devices 输出:")
+            for l in lines:
+                print(f"     {l}")
+            print("   请确认: USB已连接 / USB调试已开启 / 已授权此电脑")
+            sys.exit(1)
+    except Exception:
+        print("   设备 [FAIL] — 无法执行 adb devices")
+        sys.exit(1)
+
+    # uiautomator2
+    try:
+        import uiautomator2
+        print("   uiautomator2 已安装  ✓")
+    except ImportError:
+        print("   uiautomator2 未安装 (可选，不影响主功能)")
+
+    print("=" * 55)
+
+
 def main():
+    # 环境检查（无参数时先检查，有参数时跳过直接进测试）
+    if len(sys.argv) <= 1:
+        _env_checks()
+
     # 如果命令行传了参数则用参数，否则交互式配置
     if len(sys.argv) > 1:
         args = parse_args()
