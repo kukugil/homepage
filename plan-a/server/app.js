@@ -81,11 +81,13 @@ app.use('/api', (req, res, next) => {
 app.use('/api/v1', uploadRoutes);
 app.use('/api/v1', deviceRoutes);
 
-// Swagger UI
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('./swagger');
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'E-Reader API Docs' }));
-app.get('/api-docs.json', (_req, res) => res.json(swaggerSpec));
+// Swagger UI (optional — skipped if swagger.js is not deployed)
+try {
+  const swaggerUi = require('swagger-ui-express');
+  const swaggerSpec = require('./swagger');
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: 'E-Reader API Docs' }));
+  app.get('/api-docs.json', (_req, res) => res.json(swaggerSpec));
+} catch { /* swagger not available */ }
 
 // Serve web frontend
 const staticDir = path.join(__dirname, '..', 'public');
