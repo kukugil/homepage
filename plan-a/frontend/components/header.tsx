@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import dynamic from "next/dynamic"
+import { useState, useEffect, useCallback, useRef } from "react"
+import type { ComponentType } from "react"
 import { useSN } from "@/hooks/sn-context"
 import { useBle } from "@/hooks/use-ble"
 import { useTheme } from "next-themes"
 
-// 动态导入 QR 扫描器 — html5-qrcode 在无摄像头设备上可能模块初始化就崩
-const QrScanner = dynamic(() => import("./qr-scanner").then(m => ({ default: m.QrScanner })), {
-  ssr: false,
-})
+interface QrScannerProps {
+  onScan: (sn: string) => void
+  onClose: () => void
+}
 
 export function Header() {
   const { deviceSN, setDeviceSN, isValidSN, isConnected, snExists, checking } = useSN()
@@ -21,11 +21,36 @@ export function Header() {
   const [camAvailable, setCamAvailable] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const QrScannerRef = useRef<ComponentType<QrScannerProps> | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
+
+  // 异步检测硬件是否真正可用（非仅 API 存在）
   useEffect(() => {
-    setBleAvailable(typeof navigator !== "undefined" && !!navigator.bluetooth)
-    setCamAvailable(typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia)
+    let cancelled = false
+    async function detect() {
+      // BLE: getAvailability() 才代表有蓝牙硬件
+      if (typeof navigator !== "undefined" && navigator.bluetooth) {
+        try {
+          const avail = await navigator.bluetooth.getAvailability()
+          if (!cancelled) setBleAvailable(avail)
+        } catch {
+          if (!cancelled) setBleAvailable(false)
+        }
+      }
+      // 摄像头: enumerateDevices 检查是否有 videoinput 设备
+      if (typeof navigator !== "undefined" && navigator.mediaDevices?.enumerateDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices()
+          if (!cancelled) setCamAvailable(devices.some(d => d.kind === 'videoinput'))
+        } catch {
+          if (!cancelled) setCamAvailable(false)
+        }
+      }
+    }
+    detect()
+    return () => { cancelled = true }
   }, [])
 
   // 页面加载时自动连接已配对 BLE 设备
@@ -50,6 +75,23 @@ export function Header() {
     setDeviceSN(sn)
     setShowScanner(false)
   }, [setDeviceSN])
+
+  // 手动懒加载 QR 扫描器，import 失败不崩页面
+  const handleOpenScanner = useCallback(async () => {
+    setError("")
+    setQrLoading(true)
+    try {
+      if (!QrScannerRef.current) {
+        const mod = await import("./qr-scanner")
+        QrScannerRef.current = mod.QrScanner
+      }
+      setShowScanner(true)
+    } catch {
+      setError("此设备不支持摄像头扫描。请手动输入 SN 或使用 BLE 连接。")
+    } finally {
+      setQrLoading(false)
+    }
+  }, [])
 
   return (
     <header className="mb-6 sm:mb-8">
@@ -122,9 +164,10 @@ export function Header() {
             {/* QR 扫描按钮 — 仅摄像头可用时显示 */}
             {camAvailable && (
             <button
-              onClick={() => setShowScanner(true)}
+              onClick={handleOpenScanner}
+              disabled={qrLoading}
               title="扫描 SN 二维码"
-              className="bg-card border border-border border-l-0 px-2 py-2 hover:bg-secondary/30 transition-colors flex-shrink-0"
+              className="bg-card border border-border border-l-0 px-2 py-2 hover:bg-secondary/30 transition-colors flex-shrink-0 disabled:opacity-50"
               aria-label="扫描二维码"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-foreground">
@@ -195,9 +238,9 @@ export function Header() {
         <div className="flex-1 h-px bg-border" />
       </div>
 
-      {/* QR 扫描器弹窗 */}
-      {showScanner && (
-        <QrScanner
+      {/* QR 扫描器弹窗 — 仅模块加载成功后渲染 */}
+      {showScanner && QrScannerRef.current && (
+        <QrScannerRef.current
           onScan={handleScan}
           onClose={() => setShowScanner(false)}
         />
