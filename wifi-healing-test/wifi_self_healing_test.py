@@ -43,6 +43,14 @@ DEFAULT_CYCLES = 50
 DEFAULT_BOOT_WAIT = 15          # 系统初始化额外等待秒数
 DEFAULT_OUTPUT = "./reports"
 DEFAULT_SETTINGS_INTENT = "android.settings.WIFI_SETTINGS"
+DEFAULT_RECOVERY_MODE = "degrade"
+
+RECOVERY_MODES = {
+    "degrade":  "降级链（方案一失败→方案二）",
+    "both":     "方案一+方案二都测（同一故障类型）",
+    "m1_only":  "仅方案一（开关WiFi）",
+    "m2_only":  "仅方案二（飞行模式）",
+}
 
 # 命令探测结果: "svc" / "cmd_wifi" / "none"
 _wifi_cmd_mode: Optional[str] = None
@@ -981,6 +989,7 @@ class TestRunner:
         auto_detect: bool = True,
         output_dir: str = DEFAULT_OUTPUT,
         settings_intent: str = DEFAULT_SETTINGS_INTENT,
+        recovery_mode: str = DEFAULT_RECOVERY_MODE,
     ):
         self.cycles = cycles
         self.boot_wait = boot_wait
@@ -991,6 +1000,7 @@ class TestRunner:
         self.records: List[CycleRecord] = []
         self.device_info = ""
         self.start_time = ""
+        self.recovery_mode = recovery_mode if recovery_mode in RECOVERY_MODES else DEFAULT_RECOVERY_MODE
 
         RecoveryMethods.configure(settings_intent)
 
@@ -1053,12 +1063,15 @@ class TestRunner:
 
     def _run_cycle(self, cycle_num: int) -> CycleRecord:
         """
-        降级链流程：
+        单轮测试流程（根据 recovery_mode 切换策略）：
         ① 重启设备 + 等待启动完成
         ② 采集基线（AP数、连接状态）
         ③ 注入故障（随机类型）
-        ④ 方案一恢复 → 成功则跳过方案二
-        ⑤ 方案一失败 → 方案二恢复（同一故障）
+        ④ 方案一/方案二 根据模式执行:
+           - degrade: 方案一 → 失败则方案二（降级链）
+           - both:    方案一 → 方案二（同一故障类型都测）
+           - m1_only: 仅方案一
+           - m2_only: 仅方案二
         """
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record = CycleRecord(cycle=cycle_num, timestamp=ts)
@@ -1115,20 +1128,43 @@ class TestRunner:
         print(f"  {'─' * 30}")
         record.fault_ok, record.fault_type = FaultInjector.inject()
         fault_name = FaultInjector.FAULT_TYPES.get(record.fault_type, ('?',))[0]
-        print(f"  故障类型: {fault_name}")
+        print(f"  故障类型: {fault_name}  |  恢复模式: {RECOVERY_MODES[self.recovery_mode]}")
 
-        # ④ 方案一：开关 WiFi
-        print(f"  >>> 方案一：开关 WiFi <<<")
-        self._verify_recovery(record, method=1)
+        mode = self.recovery_mode
 
-        # ⑤ 方案一失败 → 方案二（同一故障，不再重复注入）
-        if not record.m1_recovered:
-            print(f"  >>> 方案二：飞行模式（降级） <<<")
+        # ④ 方案一（m2_only 模式跳过）
+        if mode in ("degrade", "both", "m1_only"):
+            print(f"  >>> 方案一：开关 WiFi <<<")
+            self._verify_recovery(record, method=1)
+        else:
+            record.m1_detail = "模式跳过"
+
+        # ⑤ 方案二（m1_only 模式跳过）
+        if mode == "m1_only":
+            print(f"  （仅方案一模式，跳过方案二）")
+            record.m2_skipped = True
+        elif mode == "m2_only":
+            print(f"  >>> 方案二：飞行模式 <<<")
             record.m2_skipped = False
             self._verify_recovery(record, method=2)
-        else:
-            print(f"  方案一成功，跳过方案二")
-            record.m2_skipped = True
+        elif mode == "both":
+            # 无论方案一是否成功，都再测方案二（注入同一类型故障）
+            print(f"  >>> 方案二：飞行模式（全测模式） <<<")
+            # 重新注入同一故障类型
+            if record.fault_ok:
+                print(f"    重新注入同类型故障...")
+                FaultInjector.inject(record.fault_type)
+            record.m2_skipped = False
+            self._verify_recovery(record, method=2)
+        elif mode == "degrade":
+            # 降级链：方案一成功则跳过方案二
+            if not record.m1_recovered:
+                print(f"  >>> 方案二：飞行模式（降级） <<<")
+                record.m2_skipped = False
+                self._verify_recovery(record, method=2)
+            else:
+                print(f"  方案一成功，跳过方案二（降级链模式）")
+                record.m2_skipped = True
 
         # ⑥ 最终状态汇总
         record.scan_empty = record.final_scan_count == 0
@@ -1266,12 +1302,14 @@ class ReportGenerator:
         self, records: List[CycleRecord],
         device_info: str, start_time: str, output_dir: str,
         ssid: Optional[str] = None,
+        recovery_mode: str = DEFAULT_RECOVERY_MODE,
     ):
         self.records = records
         self.device_info = device_info
         self.start_time = start_time
         self.output_dir = output_dir
         self.ssid = ssid
+        self.recovery_mode = recovery_mode
 
     def generate_all(self):
         os.makedirs(self.output_dir, exist_ok=True)
@@ -1352,16 +1390,30 @@ class ReportGenerator:
         print(f"  测试时间: {self.start_time}")
         print(f"  设备:     {self.device_info}")
         print(f"  总循环:   {s['total']}")
+        print(f"  恢复策略: {RECOVERY_MODES.get(self.recovery_mode, self.recovery_mode)}")
         if self.ssid:
             print(f"  目标SSID: {self.ssid}")
         print("-" * 80)
-        print(f"  方案一（开关WiFi）:     恢复 {s['m1_recovered']}/{s['total']} "
-              f"({s['m1_rate']:.1f}%)  |  平均耗时 {s['m1_avg_ms'] / 1000:.1f}s  |  平均恢复率 {s['m1_avg_pct']:.0f}%")
-        print(f"  方案二（飞行模式/降级）: 执行 {s['m2_attempted']} 次  |  恢复 {s['m2_recovered']}/{s['m2_attempted']} "
-              f"({s['m2_rate']:.1f}%)  |  平均耗时 {s['m2_avg_ms'] / 1000:.1f}s")
+        # 方案一
+        if self.recovery_mode != "m2_only":
+            print(f"  方案一（开关WiFi）:     恢复 {s['m1_recovered']}/{s['total']} "
+                  f"({s['m1_rate']:.1f}%)  |  平均耗时 {s['m1_avg_ms'] / 1000:.1f}s  |  平均恢复率 {s['m1_avg_pct']:.0f}%")
+        # 方案二
+        m2_label = "方案二（飞行模式/全测）" if self.recovery_mode == "both" else "方案二（飞行模式/降级）"
+        if self.recovery_mode != "m1_only":
+            print(f"  {m2_label}: 执行 {s['m2_attempted']} 次  |  恢复 {s['m2_recovered']}/{s['m2_attempted']} "
+                  f"({s['m2_rate']:.1f}%)  |  平均耗时 {s['m2_avg_ms'] / 1000:.1f}s")
         print("-" * 80)
-        print(f"  降级链: 方案一失败 {s['degraded']} 次 → 方案二救回 {s['degraded_rescued']} 次 "
-              f"({s['degraded_rescue_rate']:.1f}%)  |  双双失败: {s['both_fail']}")
+
+        # 降级链 / 全测 统计
+        if self.recovery_mode == "degrade":
+            print(f"  降级链: 方案一失败 {s['degraded']} 次 → 方案二救回 {s['degraded_rescued']} 次 "
+                  f"({s['degraded_rescue_rate']:.1f}%)  |  双双失败: {s['both_fail']}")
+        elif self.recovery_mode == "both":
+            both_m1_ok = sum(1 for r in self.records if r.m1_recovered)
+            both_m2_ok = sum(1 for r in self.records if r.m2_recovered)
+            both_ok = sum(1 for r in self.records if r.m1_recovered and r.m2_recovered)
+            print(f"  全测模式: 方案一成功={both_m1_ok}  |  方案二成功={both_m2_ok}  |  两者都成功={both_ok}  |  双双失败={s['both_fail']}")
         print("-" * 80)
 
         # 按故障类型统计
@@ -1412,6 +1464,7 @@ class ReportGenerator:
                 "device": self.device_info,
                 "total_cycles": len(self.records),
                 "target_ssid": self.ssid,
+                "recovery_mode": self.recovery_mode,
                 "fault_types": {k: v[0] for k, v in FaultInjector.FAULT_TYPES.items()},
             },
             "summary": {
@@ -1612,6 +1665,9 @@ def parse_args() -> argparse.Namespace:
                         help=f"报告输出目录（默认: {DEFAULT_OUTPUT}）")
     parser.add_argument("--settings-intent", type=str, default=DEFAULT_SETTINGS_INTENT,
                         help=f"uiautomator2 降级时的设置页 Intent（默认: {DEFAULT_SETTINGS_INTENT}）")
+    parser.add_argument("--recovery-mode", type=str, default=DEFAULT_RECOVERY_MODE,
+                        choices=list(RECOVERY_MODES.keys()),
+                        help=f"恢复策略: degrade(降级链) / both(一二都测) / m1_only(仅方案一) / m2_only(仅方案二) （默认: {DEFAULT_RECOVERY_MODE}）")
 
     args = parser.parse_args()
     if args.cycles <= 0:
@@ -1653,6 +1709,15 @@ def interactive_config() -> argparse.Namespace:
         password = ask("  目标 WiFi 密码", "")
 
     print()
+    print("  --- 恢复策略 ---")
+    for k, v in RECOVERY_MODES.items():
+        print(f"    {k}: {v}")
+    recovery_mode = ask("恢复策略", DEFAULT_RECOVERY_MODE)
+    if recovery_mode not in RECOVERY_MODES:
+        print(f"    无效策略，使用默认: {DEFAULT_RECOVERY_MODE}")
+        recovery_mode = DEFAULT_RECOVERY_MODE
+
+    print()
     print("  --- 高级选项 ---")
     print("  设置页面路径用于 uiautomator2 降级方案，一般无需更改")
     print("  AOSP 原生: android.settings.WIFI_SETTINGS")
@@ -1681,6 +1746,7 @@ def interactive_config() -> argparse.Namespace:
         password=password if password else None,
         output=output,
         settings_intent=settings_intent,
+        recovery_mode=recovery_mode,
         no_auto_detect=(ssid != ""),  # 手动指定了ssid则视为手动模式
     )
 
@@ -1762,6 +1828,7 @@ def main():
         password=args.password,
         auto_detect=not args.no_auto_detect,
         settings_intent=args.settings_intent,
+        recovery_mode=args.recovery_mode,
     )
     records = runner.run()
 
@@ -1771,6 +1838,7 @@ def main():
         start_time=runner.start_time,
         output_dir=args.output,
         ssid=args.ssid,
+        recovery_mode=args.recovery_mode,
     )
     reporter.generate_all()
 
