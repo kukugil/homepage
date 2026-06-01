@@ -1416,27 +1416,32 @@ class ReportGenerator:
             print(f"  结论: [FAIL] 不通过 (综合成功率 {rate:.1f}% < 95%)")
         print("=" * 80)
 
-        # ---- 逐轮明细表（用户指定格式） ----
+        # ---- 逐轮明细表 ----
         print()
         print("逐轮明细:")
         print("=" * 180)
-        hdr = (f"  {'轮次':4s} | {'开始时间':19s} | {'开机完成':8s} | {'WiFi就绪':8s} | "
-               f"{'初始化耗时':8s} | {'列表为空':5s} | {'连接成功':5s} | {'本轮成功':5s} | "
-               f"{'失败类型':12s} | {'失败详情':20s} | {'重启OK':5s} | {'日志路径'}")
+        hdr = (f"  {'轮次':4s} | {'开始时间':19s} | {'Android开机完成':10s} | {'WiFi列表加载完成':12s} | "
+               f"{'WiFi初始化耗时':10s} | {'列表为空':5s} | {'连接成功':5s} | {'本轮成功':5s} | "
+               f"{'失败类型':12s} | {'失败详情':20s} | {'重启命令OK':6s} | {'日志路径'}")
         print(hdr)
         print("-" * 180)
         for r in self.records:
-            scan_empty = "Y" if r.scan_empty else "N"
-            final_conn = "OK" if r.final_connect_ok else ("-" if not self.ssid else "FAIL")
-            success = "OK" if r.success else "FAIL"
-            reboot_ok = "OK" if r.reboot_ok else "FAIL"
+            scan_empty = "是" if r.scan_empty else "否"
+            if r.final_connect_ok:
+                final_conn = "是"
+            elif not self.ssid:
+                final_conn = "-"
+            else:
+                final_conn = "否"
+            success = "是" if r.success else "否"
+            reboot_ok = "是" if r.reboot_ok else "否"
             fail_type = r.failure_type or "-"
             fail_detail = (r.failure_detail or "-")[:20]
             log_path = r.log_path or "-"
             print(
-                f"  {r.cycle:>4d} | {r.timestamp:19s} | {r.boot_completed_time:8s} | {r.wifi_ready_time:8s} | "
-                f"{r.wifi_init_duration_s:>6.1f}s   | {scan_empty:>5s} | {final_conn:>5s} | {success:>5s} | "
-                f"{fail_type:12s} | {fail_detail:20s} | {reboot_ok:>5s} | {log_path}"
+                f"  {r.cycle:>4d} | {r.timestamp:19s} | {r.boot_completed_time:10s} | {r.wifi_ready_time:12s} | "
+                f"{r.wifi_init_duration_s:>8.1f}s  | {scan_empty:>5s} | {final_conn:>5s} | {success:>5s} | "
+                f"{fail_type:12s} | {fail_detail:20s} | {reboot_ok:>6s} | {log_path}"
             )
         print("-" * 180)
 
@@ -1495,10 +1500,15 @@ class ReportGenerator:
         rows = ""
         for r in self.records:
             cls = "row-fail" if not r.success else ""
-            scan_empty = "Y" if r.scan_empty else "N"
-            final_conn = "OK" if r.final_connect_ok else ("-" if not self.ssid else "FAIL")
-            success = "OK" if r.success else "FAIL"
-            reboot_ok = "OK" if r.reboot_ok else "FAIL"
+            scan_empty = "是" if r.scan_empty else "否"
+            if r.final_connect_ok:
+                final_conn = "是"
+            elif not self.ssid:
+                final_conn = "-"
+            else:
+                final_conn = "否"
+            success = "是" if r.success else "否"
+            reboot_ok = "是" if r.reboot_ok else "否"
             fail_type = r.failure_type or "-"
             fail_detail = r.failure_detail or "-"
             log_path = r.log_path or "-"
@@ -1602,7 +1612,7 @@ tr:hover{{background:#fafafa}}
 <div class="section">
 <h2>全部记录</h2>
 <table>
-<tr><th>轮次</th><th>开始时间</th><th>开机完成</th><th>WiFi就绪</th><th>初始化耗时</th><th>列表为空</th><th>连接成功</th><th>本轮成功</th><th>失败类型</th><th>失败详情</th><th>重启OK</th><th>日志路径</th></tr>
+<tr><th>轮次</th><th>开始时间</th><th>Android开机完成时间</th><th>WiFi列表加载完成时间</th><th>WiFi初始化耗时(秒)</th><th>WiFi列表是否为空</th><th>WiFi是否连接成功</th><th>本轮是否成功</th><th>失败类型</th><th>失败详情</th><th>关机或重启命令是否成功</th><th>本轮日志路径</th></tr>
 {rows}
 </table>
 </div>
@@ -1712,9 +1722,9 @@ tr:hover{{background:#fafafa}}
         ws2 = wb.create_sheet(title="逐轮明细")
 
         headers = [
-            "轮次", "开始时间", "开机完成", "WiFi就绪", "初始化耗时(s)",
-            "列表为空", "连接成功", "本轮成功", "失败类型", "失败详情",
-            "重启OK", "日志路径",
+            "轮次", "开始时间", "Android开机完成时间", "WiFi列表加载完成时间",
+            "WiFi初始化耗时(秒)", "WiFi列表是否为空", "WiFi是否连接成功",
+            "本轮是否成功", "失败类型", "失败详情", "关机或重启命令是否成功", "本轮日志路径",
         ]
         for col_idx, h in enumerate(headers, 1):
             cell = ws2.cell(row=1, column=col_idx, value=h)
@@ -1724,10 +1734,15 @@ tr:hover{{background:#fafafa}}
             cell.border = thin_border
 
         for row_idx, r in enumerate(self.records, 2):
-            scan_empty = "Y" if r.scan_empty else "N"
-            final_conn = "OK" if r.final_connect_ok else ("-" if not self.ssid else "FAIL")
-            success = "OK" if r.success else "FAIL"
-            reboot_ok = "OK" if r.reboot_ok else "FAIL"
+            scan_empty = "是" if r.scan_empty else "否"
+            if r.final_connect_ok:
+                final_conn = "是"
+            elif not self.ssid:
+                final_conn = "-"
+            else:
+                final_conn = "否"
+            success = "是" if r.success else "否"
+            reboot_ok = "是" if r.reboot_ok else "否"
             fail_type = r.failure_type or "-"
             fail_detail = r.failure_detail or "-"
             log_path = r.log_path or "-"
@@ -1749,7 +1764,7 @@ tr:hover{{background:#fafafa}}
                         cell.font = fail_font
 
         # 列宽
-        col_widths = [6, 20, 10, 10, 12, 8, 8, 8, 12, 28, 8, 36]
+        col_widths = [6, 20, 18, 18, 16, 12, 12, 10, 14, 30, 16, 40]
         for i, w in enumerate(col_widths, 1):
             ws2.column_dimensions[get_column_letter(i)].width = w
 
