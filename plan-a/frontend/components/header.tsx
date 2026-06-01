@@ -1,10 +1,15 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { useSN } from "@/hooks/sn-context"
 import { useBle } from "@/hooks/use-ble"
-import { QrScanner } from "./qr-scanner"
 import { useTheme } from "next-themes"
+
+// 动态导入 QR 扫描器 — html5-qrcode 在无摄像头设备上可能模块初始化就崩
+const QrScanner = dynamic(() => import("./qr-scanner").then(m => ({ default: m.QrScanner })), {
+  ssr: false,
+})
 
 export function Header() {
   const { deviceSN, setDeviceSN, isValidSN, isConnected, snExists, checking } = useSN()
