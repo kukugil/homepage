@@ -4,7 +4,16 @@ const { manifestPath, atomicWrite, sanitizeTitle } = require('./storage');
 
 function buildManifest(sn) {
   const books = db.getBooksBySn(sn);
-  const manifest = {
+  return formatBooks(sn, books);
+}
+
+function buildQueue(sn) {
+  const books = db.getSelectedBooksBySn(sn);
+  return formatBooks(sn, books);
+}
+
+function formatBooks(sn, books) {
+  return {
     sn,
     version: Date.now(),
     updated_at: new Date().toISOString(),
@@ -22,7 +31,6 @@ function buildManifest(sn) {
       sort_order: i,
     })),
   };
-  return manifest;
 }
 
 async function regenerateManifest(sn) {
@@ -43,4 +51,4 @@ async function readManifest(sn) {
   }
 }
 
-module.exports = { buildManifest, regenerateManifest, readManifest };
+module.exports = { buildManifest, buildQueue, regenerateManifest, readManifest };

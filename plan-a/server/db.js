@@ -28,12 +28,15 @@ function initSchema() {
       checksum      TEXT DEFAULT '',
       metadata_version INTEGER DEFAULT 1,
       sort_order    INTEGER DEFAULT 0,
+      selected      INTEGER DEFAULT 0,
       created_at    TEXT DEFAULT (datetime('now')),
       updated_at    TEXT DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_books_sn ON books(sn);
     CREATE INDEX IF NOT EXISTS idx_books_sn_sort ON books(sn, sort_order);
   `);
+  // Migration: add selected column to existing databases
+  try { db.exec('ALTER TABLE books ADD COLUMN selected INTEGER DEFAULT 0'); } catch {}
 }
 
 function insertBook(book) {
@@ -85,8 +88,27 @@ function updateMetadata(bookId, fields) {
   ).run(vals);
 }
 
+function selectBooks(sn, bookIds) {
+  const db = getDb();
+  const reset = db.prepare('UPDATE books SET selected = 0 WHERE sn = ?');
+  reset.run(sn);
+  if (bookIds && bookIds.length > 0) {
+    const set = db.prepare('UPDATE books SET selected = 1 WHERE book_id = ? AND sn = ?');
+    const tx = db.transaction((ids) => {
+      for (const id of ids) set.run(id, sn);
+    });
+    tx(bookIds);
+  }
+}
+
+function getSelectedBooksBySn(sn) {
+  return getDb().prepare(
+    'SELECT * FROM books WHERE sn = ? AND selected = 1 ORDER BY sort_order ASC, created_at DESC'
+  ).all(sn);
+}
+
 function closeDb() {
   if (db) { db.close(); db = null; }
 }
 
-module.exports = { getDb, insertBook, getBooksBySn, getBook, deleteBook, updateSortOrder, updateMetadata, closeDb };
+module.exports = { getDb, insertBook, getBooksBySn, getBook, deleteBook, updateSortOrder, updateMetadata, selectBooks, getSelectedBooksBySn, closeDb };

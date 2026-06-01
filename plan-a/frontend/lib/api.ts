@@ -11,6 +11,7 @@ export interface BookResponse {
   cover_url: string
   download_url: string
   created_at: string
+  selected?: number
 }
 
 export interface UploadResult {
@@ -102,9 +103,14 @@ export function uploadBooks(
   })
 }
 
-export async function fetchBooks(sn: string, token?: string): Promise<BookResponse[]> {
+export async function fetchBooks(sn: string, opts?: string | { token?: string; signal?: AbortSignal }): Promise<BookResponse[]> {
+  let token: string | undefined
+  let signal: AbortSignal | undefined
+  if (typeof opts === 'string') { token = opts }
+  else if (opts) { token = opts.token; signal = opts.signal }
   const resp = await fetch(`/api/v1/devices/${encodeURIComponent(sn)}/books`, {
     headers: authHeaders(token),
+    signal,
   })
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({ error: "Unknown error" }))
@@ -134,6 +140,19 @@ export async function reorderBooks(sn: string, bookIds: string[]): Promise<void>
     const err = await resp.json().catch(() => ({ error: "Reorder failed" }))
     throw new Error(err.error)
   }
+}
+
+export async function selectBooks(sn: string, bookIds: string[]): Promise<{ ok: boolean; selected: number }> {
+  const resp = await fetch(`/api/v1/devices/${encodeURIComponent(sn)}/books/select`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ book_ids: bookIds }),
+  })
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: "Select failed" }))
+    throw new Error(err.error)
+  }
+  return resp.json()
 }
 
 export function formatSize(bytes: number): string {
