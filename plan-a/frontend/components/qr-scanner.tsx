@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { Html5Qrcode } from "html5-qrcode"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { SN_REGEX } from "@/hooks/sn-context"
 
 interface QrScannerProps {
@@ -9,27 +8,168 @@ interface QrScannerProps {
   onClose: () => void
 }
 
+// 检测浏览器是否支持原生 BarcodeDetector API (Chrome 88+, Edge 88+)
+function hasBarcodeDetector(): boolean {
+  try {
+    return typeof BarcodeDetector !== "undefined"
+  } catch {
+    return false
+  }
+}
+
+async function getBarcodeDetector(): Promise<BarcodeDetector | null> {
+  try {
+    const supported = await BarcodeDetector.getSupportedFormats()
+    if (supported.includes("qr_code")) {
+      return new BarcodeDetector({ formats: ["qr_code", "code_128", "code_39", "code_93", "codabar", "ean_13"] })
+    }
+  } catch { /* not supported */ }
+  return null
+}
+
 export function QrScanner({ onScan, onClose }: QrScannerProps) {
   const [error, setError] = useState("")
   const [started, setStarted] = useState(false)
-  const scannerRef = useRef<Html5Qrcode | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const stoppedRef = useRef(false)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  useEffect(() => {
-    // 前置检测：浏览器是否支持摄像头
+  // 原生 BarcodeDetector 方案 (Chrome/Edge — 稳定，不崩页面)
+  const startNative = useCallback(async () => {
+    const detector = await getBarcodeDetector()
+    if (!detector) return false // 降级到 html5-qrcode
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("此设备不支持摄像头。请手动输入 SN。")
+      return true
+    }
+
+    let stream: MediaStream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes("NotAllowed") || msg.includes("Permission")) {
+        setError("摄像头权限被拒绝。请在浏览器设置中允许摄像头访问。")
+      } else if (msg.includes("NotFound")) {
+        setError("未检测到摄像头。")
+      } else {
+        setError(`摄像头启动失败: ${msg}`)
+      }
+      return true
+    }
+
+    streamRef.current = stream
+
+    // 需要等 video 元素挂载
+    const video = videoRef.current
+    if (!video) {
+      stream.getTracks().forEach(t => t.stop())
+      setError("扫描器初始化失败。")
+      return true
+    }
+
+    video.srcObject = stream
+    video.playsInline = true
+    await video.play()
+    setStarted(true)
+
+    if (stoppedRef.current) return true
+
+    // 创建离屏 canvas 用于抽帧
+    const canvas = document.createElement("canvas")
+    canvasRef.current = canvas
+    const ctx = canvas.getContext("2d", { willReadFrequently: true })
+    if (!ctx) {
+      stream.getTracks().forEach(t => t.stop())
+      setError("浏览器不支持 Canvas 2D。")
+      return true
+    }
+
+    let lastScan = 0
+    const SCAN_INTERVAL = 150 // ms between scans
+
+    function scan() {
+      if (stoppedRef.current) return
+      const now = Date.now()
+      if (now - lastScan < SCAN_INTERVAL) {
+        requestAnimationFrame(scan)
+        return
+      }
+      lastScan = now
+
+      if (!video || video.readyState < 2) {
+        requestAnimationFrame(scan)
+        return
+      }
+
+      const vw = video.videoWidth
+      const vh = video.videoHeight
+      if (vw === 0 || vh === 0) {
+        requestAnimationFrame(scan)
+        return
+      }
+
+      // 缩放 canvas 到合理尺寸，减少计算量
+      const maxDim = 640
+      const scale = Math.min(1, maxDim / Math.max(vw, vh))
+      canvas.width = Math.floor(vw * scale)
+      canvas.height = Math.floor(vh * scale)
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      detector
+        .detect(canvas)
+        .then((codes) => {
+          if (stoppedRef.current) return
+          for (const code of codes) {
+            const sn = code.rawValue.trim()
+            if (SN_REGEX.test(sn)) {
+              stoppedRef.current = true
+              stream.getTracks().forEach(t => t.stop())
+              onScan(sn)
+              return
+            }
+          }
+          requestAnimationFrame(scan)
+        })
+        .catch(() => {
+          if (!stoppedRef.current) requestAnimationFrame(scan)
+        })
+    }
+
+    requestAnimationFrame(scan)
+    return true
+  }, [onScan])
+
+  // 降级方案: html5-qrcode (Firefox/Safari 等不支持 BarcodeDetector 的浏览器)
+  const startFallback = useCallback(async () => {
+    // 动态导入，避免在不需要时加载
+    let Html5QrcodeModule: any
+    try {
+      Html5QrcodeModule = await import("html5-qrcode")
+    } catch {
+      setError("此浏览器不支持摄像头扫描。请手动输入 SN 或使用 BLE 连接。")
+      return
+    }
+
+    const Html5Qrcode = Html5QrcodeModule.Html5Qrcode
+
     if (!navigator.mediaDevices?.getUserMedia) {
       setError("此设备不支持摄像头。请手动输入 SN。")
       return
     }
 
-    let scanner: Html5Qrcode
+    let scanner: any
     try {
       scanner = new Html5Qrcode("qr-reader", { verbose: false })
     } catch {
       setError("无法初始化扫描器。此设备可能不支持摄像头访问。")
       return
     }
-    scannerRef.current = scanner
 
     const config = {
       fps: 10,
@@ -40,8 +180,8 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
       aspectRatio: 1,
     }
 
-    scanner
-      .start(
+    try {
+      await scanner.start(
         { facingMode: "environment" },
         config,
         (decodedText: string) => {
@@ -49,30 +189,49 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
           const sn = decodedText.trim()
           if (SN_REGEX.test(sn)) {
             stoppedRef.current = true
-            scanner.stop().catch(() => {})
+            try { scanner.stop().catch(() => {}) } catch {}
             onScan(sn)
           }
         },
-        () => {}
+        () => {} // 扫描错误静默忽略
       )
-      .then(() => setStarted(true))
-      .catch((err: unknown) => {
-        if (stoppedRef.current) return
-        const msg = err instanceof Error ? err.message : String(err)
-        if (msg.includes("NotAllowed") || msg.includes("Permission")) {
-          setError("摄像头权限被拒绝。请在浏览器设置中允许摄像头访问后刷新重试。")
-        } else if (msg.includes("NotFound") || msg.includes("no camera")) {
-          setError("未检测到摄像头。桌面端请手动输入 SN，移动端请使用有摄像头的设备。")
-        } else {
-          setError(`摄像头启动失败: ${msg}`)
-        }
-      })
+      if (!stoppedRef.current) setStarted(true)
+    } catch (err: unknown) {
+      if (stoppedRef.current) return
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes("NotAllowed") || msg.includes("Permission")) {
+        setError("摄像头权限被拒绝。请在浏览器设置中允许摄像头访问。")
+      } else if (msg.includes("NotFound") || msg.includes("no camera")) {
+        setError("未检测到摄像头。桌面端请手动输入 SN。")
+      } else {
+        setError(`摄像头启动失败: ${msg}`)
+      }
+    }
+  }, [onScan])
+
+  useEffect(() => {
+    stoppedRef.current = false
+
+    async function init() {
+      // 优先使用原生 BarcodeDetector
+      if (hasBarcodeDetector()) {
+        const used = await startNative()
+        if (used) return
+      }
+      // 降级到 html5-qrcode
+      await startFallback()
+    }
+
+    init()
 
     return () => {
       stoppedRef.current = true
-      scanner.stop().catch(() => {})
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+        streamRef.current = null
+      }
     }
-  }, [onScan])
+  }, [startNative, startFallback])
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -101,10 +260,24 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
               {error}
             </div>
           ) : (
-            <div
-              id="qr-reader"
-              className="w-full rounded-lg overflow-hidden [&_video]:w-full"
-            />
+            <div className="relative w-full rounded-lg overflow-hidden bg-black">
+              {/* 原生方案: 用自己的 video 元素 */}
+              {hasBarcodeDetector() ? (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-auto"
+                />
+              ) : (
+                /* 降级方案: html5-qrcode 自行管理 DOM */
+                <div
+                  id="qr-reader"
+                  className="w-full [&_video]:w-full"
+                />
+              )}
+            </div>
           )}
           {!error && !started && (
             <p className="text-xs text-muted-foreground text-center mt-3">
