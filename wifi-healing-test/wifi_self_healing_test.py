@@ -48,8 +48,6 @@ DEFAULT_RECOVERY_MODE = "degrade"
 RECOVERY_MODES = {
     "degrade":  "降级链（方案一失败→方案二）",
     "both":     "方案一+方案二都测（同一故障类型）",
-    "m1_only":  "仅方案一（开关WiFi）",
-    "m2_only":  "仅方案二（飞行模式）",
 }
 
 # 命令探测结果: "svc" / "cmd_wifi" / "none"
@@ -1069,9 +1067,7 @@ class TestRunner:
         ③ 注入故障（随机类型）
         ④ 方案一/方案二 根据模式执行:
            - degrade: 方案一 → 失败则方案二（降级链）
-           - both:    方案一 → 方案二（同一故障类型都测）
-           - m1_only: 仅方案一
-           - m2_only: 仅方案二
+           - both:    方案一 → 重新注入同类型故障 → 方案二（全测）
         """
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record = CycleRecord(cycle=cycle_num, timestamp=ts)
@@ -1132,38 +1128,27 @@ class TestRunner:
 
         mode = self.recovery_mode
 
-        # ④ 方案一（m2_only 模式跳过）
-        if mode in ("degrade", "both", "m1_only"):
-            print(f"  >>> 方案一：开关 WiFi <<<")
-            self._verify_recovery(record, method=1)
-        else:
-            record.m1_detail = "模式跳过"
+        # ④ 方案一：始终执行
+        print(f"  >>> 方案一：开关 WiFi <<<")
+        self._verify_recovery(record, method=1)
 
-        # ⑤ 方案二（m1_only 模式跳过）
-        if mode == "m1_only":
-            print(f"  （仅方案一模式，跳过方案二）")
-            record.m2_skipped = True
-        elif mode == "m2_only":
-            print(f"  >>> 方案二：飞行模式 <<<")
-            record.m2_skipped = False
-            self._verify_recovery(record, method=2)
-        elif mode == "both":
-            # 无论方案一是否成功，都再测方案二（注入同一类型故障）
+        # ⑤ 方案二
+        if mode == "both":
+            # 无论方案一是否成功，都再测方案二（重新注入同一故障类型）
             print(f"  >>> 方案二：飞行模式（全测模式） <<<")
-            # 重新注入同一故障类型
             if record.fault_ok:
                 print(f"    重新注入同类型故障...")
                 FaultInjector.inject(record.fault_type)
             record.m2_skipped = False
             self._verify_recovery(record, method=2)
-        elif mode == "degrade":
-            # 降级链：方案一成功则跳过方案二
+        else:
+            # degrade 模式：方案一失败才走方案二
             if not record.m1_recovered:
                 print(f"  >>> 方案二：飞行模式（降级） <<<")
                 record.m2_skipped = False
                 self._verify_recovery(record, method=2)
             else:
-                print(f"  方案一成功，跳过方案二（降级链模式）")
+                print(f"  方案一成功，跳过方案二")
                 record.m2_skipped = True
 
         # ⑥ 最终状态汇总
@@ -1316,6 +1301,7 @@ class ReportGenerator:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.save_json(os.path.join(self.output_dir, f"wifi_healing_{ts}.json"))
         self.save_html(os.path.join(self.output_dir, f"wifi_healing_{ts}.html"))
+        self.save_excel(os.path.join(self.output_dir, f"wifi_healing_{ts}.xlsx"))
         self.print_terminal()
         print(f"\n报告已保存到: {self.output_dir}")
 
@@ -1395,25 +1381,23 @@ class ReportGenerator:
             print(f"  目标SSID: {self.ssid}")
         print("-" * 80)
         # 方案一
-        if self.recovery_mode != "m2_only":
-            print(f"  方案一（开关WiFi）:     恢复 {s['m1_recovered']}/{s['total']} "
-                  f"({s['m1_rate']:.1f}%)  |  平均耗时 {s['m1_avg_ms'] / 1000:.1f}s  |  平均恢复率 {s['m1_avg_pct']:.0f}%")
+        print(f"  方案一（开关WiFi）:     恢复 {s['m1_recovered']}/{s['total']} "
+              f"({s['m1_rate']:.1f}%)  |  平均耗时 {s['m1_avg_ms'] / 1000:.1f}s  |  平均恢复率 {s['m1_avg_pct']:.0f}%")
         # 方案二
         m2_label = "方案二（飞行模式/全测）" if self.recovery_mode == "both" else "方案二（飞行模式/降级）"
-        if self.recovery_mode != "m1_only":
-            print(f"  {m2_label}: 执行 {s['m2_attempted']} 次  |  恢复 {s['m2_recovered']}/{s['m2_attempted']} "
-                  f"({s['m2_rate']:.1f}%)  |  平均耗时 {s['m2_avg_ms'] / 1000:.1f}s")
+        print(f"  {m2_label}: 执行 {s['m2_attempted']} 次  |  恢复 {s['m2_recovered']}/{s['m2_attempted']} "
+              f"({s['m2_rate']:.1f}%)  |  平均耗时 {s['m2_avg_ms'] / 1000:.1f}s")
         print("-" * 80)
 
-        # 降级链 / 全测 统计
+        # 策略统计
         if self.recovery_mode == "degrade":
             print(f"  降级链: 方案一失败 {s['degraded']} 次 → 方案二救回 {s['degraded_rescued']} 次 "
                   f"({s['degraded_rescue_rate']:.1f}%)  |  双双失败: {s['both_fail']}")
-        elif self.recovery_mode == "both":
+        else:
             both_m1_ok = sum(1 for r in self.records if r.m1_recovered)
             both_m2_ok = sum(1 for r in self.records if r.m2_recovered)
             both_ok = sum(1 for r in self.records if r.m1_recovered and r.m2_recovered)
-            print(f"  全测模式: 方案一成功={both_m1_ok}  |  方案二成功={both_m2_ok}  |  两者都成功={both_ok}  |  双双失败={s['both_fail']}")
+            print(f"  全测模式: M1成功={both_m1_ok}  |  M2成功={both_m2_ok}  |  两者都成功={both_ok}  |  双双失败={s['both_fail']}")
         print("-" * 80)
 
         # 按故障类型统计
@@ -1633,6 +1617,150 @@ tr:hover{{background:#fafafa}}
         with open(path, "w", encoding="utf-8") as f:
             f.write(html)
 
+    def save_excel(self, path: str):
+        """生成 Excel 报告，包含汇总和逐轮明细两个 Sheet。"""
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+        except ImportError:
+            print("  [WARN] openpyxl 未安装，跳过 Excel 报告 (pip install openpyxl)")
+            return
+
+        s = self._compute_stats()
+        wb = openpyxl.Workbook()
+
+        # ---- 样式 ----
+        header_font = Font(bold=True, size=11)
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font_white = Font(bold=True, size=11, color="FFFFFF")
+        pass_font = Font(bold=True, color="228B22")
+        fail_font = Font(bold=True, color="DC143C")
+        thin_border = Border(
+            left=Side(style="thin"), right=Side(style="thin"),
+            top=Side(style="thin"), bottom=Side(style="thin"),
+        )
+        center_align = Alignment(horizontal="center", vertical="center")
+
+        # ================================================================
+        # Sheet 1: 汇总
+        # ================================================================
+        ws1 = wb.active
+        ws1.title = "汇总"
+
+        summary_data = [
+            ["WiFi 异常自愈能力测试报告", "", ""],
+            ["", "", ""],
+            ["测试时间", self.start_time, ""],
+            ["设备", self.device_info, ""],
+            ["总循环", s["total"], ""],
+            ["恢复策略", RECOVERY_MODES.get(self.recovery_mode, self.recovery_mode), ""],
+            ["目标SSID", self.ssid or "(自动检测)", ""],
+            ["", "", ""],
+            ["方案一（开关WiFi）", f"恢复 {s['m1_recovered']}/{s['total']} ({s['m1_rate']:.1f}%)",
+             f"平均耗时 {s['m1_avg_ms']/1000:.1f}s  平均恢复率 {s['m1_avg_pct']:.0f}%"],
+            ["  开关可点击", f"{s['m1_toggle_ok']}/{s['total']}", ""],
+            ["  连接成功", f"{s['m1_connect_ok']}/{s['total']}", ""],
+            ["方案二（飞行模式）", f"执行 {s['m2_attempted']} 次  恢复 {s['m2_recovered']}/{s['m2_attempted']} ({s['m2_rate']:.1f}%)",
+             f"平均耗时 {s['m2_avg_ms']/1000:.1f}s"],
+            ["", "", ""],
+        ]
+
+        if self.recovery_mode == "degrade":
+            summary_data.append([
+                "降级链", f"方案一失败 {s['degraded']} 次 → 方案二救回 {s['degraded_rescued']} 次 ({s['degraded_rescue_rate']:.1f}%)",
+                f"双双失败: {s['both_fail']}",
+            ])
+        else:
+            both_m1_ok = sum(1 for r in self.records if r.m1_recovered)
+            both_m2_ok = sum(1 for r in self.records if r.m2_recovered)
+            both_ok = sum(1 for r in self.records if r.m1_recovered and r.m2_recovered)
+            summary_data.append([
+                "全测模式", f"M1成功={both_m1_ok}  M2成功={both_m2_ok}  两者都成功={both_ok}",
+                f"双双失败={s['both_fail']}",
+            ])
+
+        summary_data += [
+            ["", "", ""],
+            ["综合成功率", f"{s['overall_rate']:.1f}%",
+             "PASS" if s['overall_rate'] >= 95 else "FAIL"],
+        ]
+
+        for row_idx, row_data in enumerate(summary_data, 1):
+            for col_idx, val in enumerate(row_data, 1):
+                cell = ws1.cell(row=row_idx, column=col_idx, value=val)
+                if row_idx == 1:
+                    cell.font = Font(bold=True, size=14)
+                elif row_idx in (9, 13):
+                    cell.font = Font(bold=True, size=11)
+
+        # 结论行
+        last_row = len(summary_data)
+        result_cell = ws1.cell(row=last_row, column=3)
+        if s['overall_rate'] >= 95:
+            result_cell.font = pass_font
+        else:
+            result_cell.font = fail_font
+
+        ws1.column_dimensions['A'].width = 22
+        ws1.column_dimensions['B'].width = 48
+        ws1.column_dimensions['C'].width = 38
+
+        # ================================================================
+        # Sheet 2: 逐轮明细
+        # ================================================================
+        ws2 = wb.create_sheet(title="逐轮明细")
+
+        headers = [
+            "轮次", "开始时间", "开机完成", "WiFi就绪", "初始化耗时(s)",
+            "列表为空", "连接成功", "本轮成功", "失败类型", "失败详情",
+            "重启OK", "日志路径",
+        ]
+        for col_idx, h in enumerate(headers, 1):
+            cell = ws2.cell(row=1, column=col_idx, value=h)
+            cell.font = header_font_white
+            cell.fill = header_fill
+            cell.alignment = center_align
+            cell.border = thin_border
+
+        for row_idx, r in enumerate(self.records, 2):
+            scan_empty = "Y" if r.scan_empty else "N"
+            final_conn = "OK" if r.final_connect_ok else ("-" if not self.ssid else "FAIL")
+            success = "OK" if r.success else "FAIL"
+            reboot_ok = "OK" if r.reboot_ok else "FAIL"
+            fail_type = r.failure_type or "-"
+            fail_detail = r.failure_detail or "-"
+            log_path = r.log_path or "-"
+
+            row_data = [
+                r.cycle, r.timestamp[:19], r.boot_completed_time, r.wifi_ready_time,
+                round(r.wifi_init_duration_s, 1), scan_empty, final_conn, success,
+                fail_type, fail_detail, reboot_ok, log_path,
+            ]
+            for col_idx, val in enumerate(row_data, 1):
+                cell = ws2.cell(row=row_idx, column=col_idx, value=val)
+                cell.border = thin_border
+                cell.alignment = center_align
+                if col_idx == 12:  # 日志路径左对齐
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+                # 失败行标红
+                if not r.success:
+                    if col_idx == 8:  # 本轮成功列
+                        cell.font = fail_font
+
+        # 列宽
+        col_widths = [6, 20, 10, 10, 12, 8, 8, 8, 12, 28, 8, 36]
+        for i, w in enumerate(col_widths, 1):
+            ws2.column_dimensions[get_column_letter(i)].width = w
+
+        # 冻结首行
+        ws2.freeze_panes = "A2"
+
+        # 自动筛选
+        ws2.auto_filter.ref = f"A1:{get_column_letter(len(headers))}{len(self.records) + 1}"
+
+        wb.save(path)
+
 
 # ============================================================
 # CLI 入口
@@ -1667,7 +1795,7 @@ def parse_args() -> argparse.Namespace:
                         help=f"uiautomator2 降级时的设置页 Intent（默认: {DEFAULT_SETTINGS_INTENT}）")
     parser.add_argument("--recovery-mode", type=str, default=DEFAULT_RECOVERY_MODE,
                         choices=list(RECOVERY_MODES.keys()),
-                        help=f"恢复策略: degrade(降级链) / both(一二都测) / m1_only(仅方案一) / m2_only(仅方案二) （默认: {DEFAULT_RECOVERY_MODE}）")
+                        help=f"恢复策略: degrade(降级链，方案一失败再测方案二) / both(方案一二都测) （默认: {DEFAULT_RECOVERY_MODE}）")
 
     args = parser.parse_args()
     if args.cycles <= 0:
@@ -1710,12 +1838,10 @@ def interactive_config() -> argparse.Namespace:
 
     print()
     print("  --- 恢复策略 ---")
-    for k, v in RECOVERY_MODES.items():
-        print(f"    {k}: {v}")
-    recovery_mode = ask("恢复策略", DEFAULT_RECOVERY_MODE)
-    if recovery_mode not in RECOVERY_MODES:
-        print(f"    无效策略，使用默认: {DEFAULT_RECOVERY_MODE}")
-        recovery_mode = DEFAULT_RECOVERY_MODE
+    print("  降级链: 方案一失败后才测方案二")
+    print("  全测:   方案一和方案二都测（同一故障）")
+    test_both = input("  方案一和方案二都测？[y/N]: ").strip().lower()
+    recovery_mode = "both" if test_both == "y" else DEFAULT_RECOVERY_MODE
 
     print()
     print("  --- 高级选项 ---")
