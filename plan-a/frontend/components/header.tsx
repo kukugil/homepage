@@ -13,12 +13,14 @@ export function Header() {
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState("")
   const [bleAvailable, setBleAvailable] = useState(false)
+  const [camAvailable, setCamAvailable] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
     setBleAvailable(typeof navigator !== "undefined" && !!navigator.bluetooth)
+    setCamAvailable(typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia)
   }, [])
 
   // 页面加载时自动连接已配对 BLE 设备
@@ -112,7 +114,8 @@ export function Header() {
                 ${deviceSN && !isValidSN ? "border-destructive text-destructive" : ""}`}
               placeholder="输入设备SN"
             />
-            {/* QR 扫描按钮 */}
+            {/* QR 扫描按钮 — 仅摄像头可用时显示 */}
+            {camAvailable && (
             <button
               onClick={() => setShowScanner(true)}
               title="扫描 SN 二维码"
@@ -127,6 +130,7 @@ export function Header() {
                 <line x1="21" y1="17" x2="17" y2="21" />
               </svg>
             </button>
+            )}
             {/* BLE 按钮 */}
             {bleAvailable && (
               <button

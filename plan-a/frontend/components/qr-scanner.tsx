@@ -16,7 +16,19 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
   const stoppedRef = useRef(false)
 
   useEffect(() => {
-    const scanner = new Html5Qrcode("qr-reader", { verbose: false })
+    // 前置检测：浏览器是否支持摄像头
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("此设备不支持摄像头。请手动输入 SN。")
+      return
+    }
+
+    let scanner: Html5Qrcode
+    try {
+      scanner = new Html5Qrcode("qr-reader", { verbose: false })
+    } catch {
+      setError("无法初始化扫描器。此设备可能不支持摄像头访问。")
+      return
+    }
     scannerRef.current = scanner
 
     const config = {
@@ -45,6 +57,7 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
       )
       .then(() => setStarted(true))
       .catch((err: unknown) => {
+        if (stoppedRef.current) return
         const msg = err instanceof Error ? err.message : String(err)
         if (msg.includes("NotAllowed") || msg.includes("Permission")) {
           setError("摄像头权限被拒绝。请在浏览器设置中允许摄像头访问后刷新重试。")
