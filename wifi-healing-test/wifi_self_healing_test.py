@@ -173,6 +173,11 @@ class CycleRecord:
     cycle: int
     timestamp: str
 
+    # 时间戳（精确到秒）
+    boot_completed_time: str = ""    # Android 开机完成时间
+    wifi_ready_time: str = ""        # WiFi 列表加载完成时间
+    wifi_init_duration_s: float = 0.0  # WiFi 初始化耗时(秒)
+
     # 基线（注入前采集）
     baseline_ap: int = 0             # 注入前 AP 数量
     baseline_connected: bool = False # 注入前是否已连接热点
@@ -198,10 +203,58 @@ class CycleRecord:
     m2_connect_ok: bool = False
     m2_detail: str = ""
 
+    # 最终状态
+    reboot_ok: bool = False          # 关机/重启命令是否成功
+    scan_empty: bool = True          # WiFi列表是否为空（最终）
+    log_path: str = ""               # 本轮日志路径
+
     @property
     def success(self) -> bool:
         """方案一成功 或 (方案一失败但方案二成功)"""
         return self.m1_recovered or (not self.m1_recovered and self.m2_recovered)
+
+    @property
+    def final_scan_count(self) -> int:
+        """最终恢复后 AP 数量。"""
+        if self.m2_skipped:
+            return self.m1_scan_after
+        return self.m2_scan_after if self.m2_recovered else self.m1_scan_after
+
+    @property
+    def final_connect_ok(self) -> bool:
+        """最终连接是否成功。"""
+        if self.m2_skipped:
+            return self.m1_connect_ok
+        return self.m2_connect_ok if self.m2_recovered else self.m1_connect_ok
+
+    @property
+    def failure_type(self) -> str:
+        """失败类型（用于报告）。"""
+        if self.success:
+            return ""
+        if not self.reboot_ok:
+            return "重启失败"
+        if not self.fault_ok:
+            return "故障注入失败"
+        if not self.m1_recovered and not self.m2_recovered:
+            return "双双失败"
+        return "其他"
+
+    @property
+    def failure_detail(self) -> str:
+        """失败详情。"""
+        if self.success:
+            return ""
+        parts = []
+        if not self.reboot_ok:
+            parts.append("重启命令失败")
+        if not self.fault_ok:
+            parts.append("故障注入未生效")
+        if not self.m1_recovered and self.m1_detail:
+            parts.append(f"方案一: {self.m1_detail}")
+        if not self.m2_skipped and not self.m2_recovered and self.m2_detail:
+            parts.append(f"方案二: {self.m2_detail}")
+        return "; ".join(parts)
 
     @property
     def m1_recovery_pct(self) -> float:
@@ -221,6 +274,15 @@ class CycleRecord:
         return {
             "cycle": self.cycle,
             "timestamp": self.timestamp,
+            "boot_completed_time": self.boot_completed_time,
+            "wifi_ready_time": self.wifi_ready_time,
+            "wifi_init_duration_s": round(self.wifi_init_duration_s, 3),
+            "reboot_ok": self.reboot_ok,
+            "scan_empty": self.scan_empty,
+            "success": self.success,
+            "failure_type": self.failure_type,
+            "failure_detail": self.failure_detail,
+            "log_path": self.log_path,
             "baseline": {"ap_count": self.baseline_ap, "connected": self.baseline_connected},
             "fault": {"ok": self.fault_ok, "type": self.fault_type},
             "method1_wifi_toggle": {
@@ -812,6 +874,7 @@ class TestRunner:
         ssid: Optional[str] = None,
         password: Optional[str] = None,
         auto_detect: bool = True,
+        output_dir: str = DEFAULT_OUTPUT,
         settings_intent: str = DEFAULT_SETTINGS_INTENT,
     ):
         self.cycles = cycles
@@ -819,6 +882,7 @@ class TestRunner:
         self.ssid = ssid
         self.password = password
         self.auto_detect = auto_detect
+        self.output_dir = output_dir
         self.records: List[CycleRecord] = []
         self.device_info = ""
         self.start_time = ""
@@ -890,11 +954,18 @@ class TestRunner:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         record = CycleRecord(cycle=cycle_num, timestamp=ts)
 
+        # 创建本轮日志目录
+        log_dir = os.path.join(self.output_dir, "logs", f"run_{self.start_time.replace(':', '').replace(' ', '_')}", f"iteration_{cycle_num}")
+        os.makedirs(log_dir, exist_ok=True)
+        record.log_path = log_dir
+
         print(f"\n{'─' * 40}")
         print(f"[{cycle_num}/{self.cycles}] 正在重启设备...")
 
         # ① 重启 + 等待启动
-        if not AdbHelper.reboot():
+        reboot_start = time.time()
+        record.reboot_ok = AdbHelper.reboot()
+        if not record.reboot_ok:
             record.m1_detail = "重启失败"; record.m2_detail = "重启失败"
             return record
         if not AdbHelper.wait_for_device():
@@ -904,17 +975,26 @@ class TestRunner:
             record.m1_detail = "boot_completed超时"; record.m2_detail = "boot_completed超时"
             return record
 
-        print(f"  启动完成，等待 {self.boot_wait}s 系统初始化...")
+        boot_time = datetime.now().strftime("%H:%M:%S")
+        record.boot_completed_time = boot_time
+        print(f"  Android开机完成: {boot_time}")
+
+        print(f"  等待 {self.boot_wait}s 系统初始化...")
         for s in range(self.boot_wait, 0, -5):
             sys.stdout.write(f"\r  剩余 {s}s ...")
             sys.stdout.flush()
             time.sleep(min(5, s))
         print()
+
+        wifi_ready_start = time.time()
         WifiDetector.wait_for_wifi_ready()
+        wifi_ready_time = datetime.now().strftime("%H:%M:%S")
+        record.wifi_ready_time = wifi_ready_time
+        record.wifi_init_duration_s = time.time() - wifi_ready_start + self.boot_wait
+        print(f"  WiFi列表加载完成: {wifi_ready_time} (初始化耗时 {record.wifi_init_duration_s:.1f}s)")
 
         # ② 采集基线
         print(f"  采集基线数据...")
-        self.ssid = self.ssid  # may have been auto-detected
         baseline = WifiDetector.collect_baseline(self.ssid)
         record.baseline_ap = baseline["ap_count"]
         record.baseline_connected = baseline["connected"]
@@ -940,6 +1020,14 @@ class TestRunner:
         else:
             print(f"  方案一成功，跳过方案二")
             record.m2_skipped = True
+
+        # ⑥ 最终状态汇总
+        record.scan_empty = record.final_scan_count == 0
+
+        # 保存本轮日志
+        record_data = record.to_dict()
+        with open(os.path.join(log_dir, "record.json"), "w", encoding="utf-8") as f:
+            json.dump(record_data, f, ensure_ascii=False, indent=2)
 
         return record
 
@@ -1117,7 +1205,11 @@ class ReportGenerator:
             fs["rate"] = (fs["m1_ok"] + fs["m2_rescued"]) / t * 100 if t > 0 else 0
             fs["m1_rate"] = fs["m1_ok"] / t * 100 if t > 0 else 0
 
-        overall = (m1_recovered + m2_recovered) / (total + degraded) * 100 if (total + degraded) > 0 else 0
+        overall = (m1_recovered + degraded_rescued) / total * 100 if total > 0 else 0
+
+        # 其他统计
+        reboot_ok_count = sum(1 for r in self.records if r.reboot_ok)
+        connect_ok_count = sum(1 for r in self.records if r.final_connect_ok)
 
         return {
             "total": total,
@@ -1133,75 +1225,71 @@ class ReportGenerator:
             "degraded_rescue_rate": degraded_rescued / degraded * 100 if degraded > 0 else 0,
             "both_fail": both_fail,
             "overall_rate": overall,
+            "reboot_ok": reboot_ok_count,
+            "connect_ok": connect_ok_count,
             "fault_stats": fault_stats,
         }
 
     def print_terminal(self):
         s = self._compute_stats()
         print()
-        print("=" * 60)
-        print("       WiFi 异常自愈能力测试报告")
-        print("=" * 60)
-        print(f"测试时间: {self.start_time}")
-        print(f"设备: {self.device_info}")
-        print(f"总循环: {s['total']}")
-        print("-" * 60)
-        print(f"  方案一（开关WiFi）:   恢复 {s['m1_recovered']}/{s['total']} "
+        print("=" * 80)
+        print("                  WiFi 异常自愈能力测试报告")
+        print("=" * 80)
+        print(f"  测试时间: {self.start_time}")
+        print(f"  设备:     {self.device_info}")
+        print(f"  总循环:   {s['total']}")
+        if self.ssid:
+            print(f"  目标SSID: {self.ssid}")
+        print("-" * 80)
+        print(f"  方案一（开关WiFi）:     恢复 {s['m1_recovered']}/{s['total']} "
               f"({s['m1_rate']:.1f}%)  |  平均耗时 {s['m1_avg_ms'] / 1000:.1f}s  |  平均恢复率 {s['m1_avg_pct']:.0f}%")
-        print(f"    开关可点击: {s['m1_toggle_ok']}/{s['total']}  |  "
-              f"连接成功: {s['m1_connect_ok']}/{s['total']}")
-        print(f"  方案二（飞行模式/降级）:  执行 {s['m2_attempted']} 次  |  恢复 {s['m2_recovered']}/{s['m2_attempted']} "
+        print(f"  方案二（飞行模式/降级）: 执行 {s['m2_attempted']} 次  |  恢复 {s['m2_recovered']}/{s['m2_attempted']} "
               f"({s['m2_rate']:.1f}%)  |  平均耗时 {s['m2_avg_ms'] / 1000:.1f}s")
-        if s['m2_attempted'] > 0:
-            print(f"    开关可点击: {s['m2_toggle_ok']}/{s['m2_attempted']}  |  "
-                  f"连接成功: {s['m2_connect_ok']}/{s['m2_attempted']}")
-        print("-" * 60)
+        print("-" * 80)
         print(f"  降级链: 方案一失败 {s['degraded']} 次 → 方案二救回 {s['degraded_rescued']} 次 "
               f"({s['degraded_rescue_rate']:.1f}%)  |  双双失败: {s['both_fail']}")
-        print("-" * 60)
+        print("-" * 80)
 
         # 按故障类型统计
         if s.get("fault_stats"):
             print(f"  按故障类型:")
-            print(f"  {'故障类型':20s} {'出现':5s} {'方案一OK':8s} {'方案二救回':10s} {'综合成功率':10s}")
+            print(f"  {'故障类型':20s} {'出现':5s} {'方案一OK':10s} {'方案二救回':10s} {'综合成功率':10s}")
             for ft, fs in sorted(s["fault_stats"].items()):
-                print(f"  {fs['name']:20s} {fs['total']:>4d}  {fs['m1_ok']:>5d}/{fs['total']:<4d} "
+                print(f"  {fs['name']:20s} {fs['total']:>4d}  {fs['m1_ok']:>6d}/{fs['total']:<3d}  "
                       f"{fs['m2_rescued']:>6d}      {fs['rate']:>6.1f}%")
-            print("-" * 60)
+            print("-" * 80)
 
         rate = s['overall_rate']
         if rate >= 95:
-            print(f"结论: [PASS] 通过 (综合成功率 {rate:.1f}% >= 95%, 无永久性失效)")
+            print(f"  结论: [PASS] 通过 (综合成功率 {rate:.1f}% >= 95%, 无永久性失效)")
         else:
-            print(f"结论: [FAIL] 不通过 (综合成功率 {rate:.1f}% < 95%)")
-        print("=" * 60)
+            print(f"  结论: [FAIL] 不通过 (综合成功率 {rate:.1f}% < 95%)")
+        print("=" * 80)
 
-        # 明细
+        # ---- 逐轮明细表（用户指定格式） ----
         print()
-        print("轮次明细:")
-        hdr = (f"  {'轮次':4s} {'故障':16s} {'基线':4s} "
-               f"{'方案一':5s} {'开关':4s} {'AP':5s} {'恢复率':6s} "
-               f"{'连接':5s} | {'方案二':5s} {'开关':4s} {'AP':5s} {'恢复率':6s}")
+        print("逐轮明细:")
+        print("=" * 180)
+        hdr = (f"  {'轮次':4s} | {'开始时间':19s} | {'开机完成':8s} | {'WiFi就绪':8s} | "
+               f"{'初始化耗时':8s} | {'列表为空':5s} | {'连接成功':5s} | {'本轮成功':5s} | "
+               f"{'失败类型':12s} | {'失败详情':20s} | {'重启OK':5s} | {'日志路径'}")
         print(hdr)
+        print("-" * 180)
         for r in self.records:
-            ft = FaultInjector.FAULT_TYPES.get(r.fault_type, ('?',))[0][:14]
-            m1_s = "OK" if r.m1_recovered else "FAIL"
-            m1_t = "OK" if r.m1_toggle_ok else "FAIL"
-            m1_c = "OK" if r.m1_connect_ok else ("-" if not self.ssid else "FAIL")
-            if r.m2_skipped:
-                m2_s, m2_t, m2_ap, m2_pct, m2_c = "SKIP", "-", "-", "-", "-"
-            else:
-                m2_s = "OK" if r.m2_recovered else "FAIL"
-                m2_t = "OK" if r.m2_toggle_ok else "FAIL"
-                m2_ap = str(r.m2_scan_after)
-                m2_pct = f"{r.m2_recovery_pct:.0f}%"
-                m2_c = "OK" if r.m2_connect_ok else ("-" if not self.ssid else "FAIL")
+            scan_empty = "Y" if r.scan_empty else "N"
+            final_conn = "OK" if r.final_connect_ok else ("-" if not self.ssid else "FAIL")
+            success = "OK" if r.success else "FAIL"
+            reboot_ok = "OK" if r.reboot_ok else "FAIL"
+            fail_type = r.failure_type or "-"
+            fail_detail = (r.failure_detail or "-")[:20]
+            log_path = r.log_path or "-"
             print(
-                f"  #{r.cycle:<3d} {ft:16s} {r.baseline_ap:>3d}  "
-                f"{m1_s:5s} {m1_t:4s} {r.m1_scan_after:>3d}/{r.baseline_ap:<4d} {r.m1_recovery_pct:>5.0f}% "
-                f"{m1_c:5s} | "
-                f"{m2_s:5s} {m2_t:4s} {m2_ap:>5s} {m2_pct:>6s}"
+                f"  {r.cycle:>4d} | {r.timestamp:19s} | {r.boot_completed_time:8s} | {r.wifi_ready_time:8s} | "
+                f"{r.wifi_init_duration_s:>6.1f}s   | {scan_empty:>5s} | {final_conn:>5s} | {success:>5s} | "
+                f"{fail_type:12s} | {fail_detail:20s} | {reboot_ok:>5s} | {log_path}"
             )
+        print("-" * 180)
 
     def save_json(self, path: str):
         s = self._compute_stats()
@@ -1235,6 +1323,8 @@ class ReportGenerator:
                     "both_fail": s["both_fail"],
                 },
                 "overall_rate": round(s["overall_rate"], 1),
+                "reboot_ok": s["reboot_ok"],
+                "final_connect_ok": s["connect_ok"],
                 "fault_stats": {
                     ft: {"name": fs["name"], "total": fs["total"],
                          "m1_ok": fs["m1_ok"], "m2_rescued": fs["m2_rescued"],
@@ -1251,31 +1341,25 @@ class ReportGenerator:
         s = self._compute_stats()
         rate = s['overall_rate']
 
+        # 逐轮明细行
         rows = ""
         for r in self.records:
             cls = "row-fail" if not r.success else ""
-            ft = FaultInjector.FAULT_TYPES.get(r.fault_type, ('?',))[0]
-            m1_c = "OK" if r.m1_connect_ok else ("-" if not self.ssid else "FAIL")
-            if r.m2_skipped:
-                m2_s, m2_t, m2_ap, m2_pct, m2_c = "SKIP", "-", "-", "-", "-"
-            else:
-                m2_s = "OK" if r.m2_recovered else "FAIL"
-                m2_t = "OK" if r.m2_toggle_ok else "FAIL"
-                m2_ap = str(r.m2_scan_after)
-                m2_pct = f"{r.m2_recovery_pct:.0f}%"
-                m2_c = "OK" if r.m2_connect_ok else ("-" if not self.ssid else "FAIL")
+            scan_empty = "Y" if r.scan_empty else "N"
+            final_conn = "OK" if r.final_connect_ok else ("-" if not self.ssid else "FAIL")
+            success = "OK" if r.success else "FAIL"
+            reboot_ok = "OK" if r.reboot_ok else "FAIL"
+            fail_type = r.failure_type or "-"
+            fail_detail = r.failure_detail or "-"
+            log_path = r.log_path or "-"
             rows += (
                 f"<tr class='{cls}'>"
-                f"<td>#{r.cycle}</td><td>{r.timestamp[:19]}</td>"
-                f"<td>{ft}</td><td>{r.baseline_ap}</td>"
-                f"<td>{'OK' if r.m1_recovered else 'FAIL'}</td>"
-                f"<td>{'OK' if r.m1_toggle_ok else 'FAIL'}</td>"
-                f"<td>{r.m1_scan_after}/{r.baseline_ap}</td>"
-                f"<td>{r.m1_recovery_pct:.0f}%</td><td>{m1_c}</td>"
-                f"<td>{r.m1_time_ms / 1000:.1f}s</td>"
-                f"<td>{m2_s}</td><td>{m2_t}</td>"
-                f"<td>{m2_ap}</td><td>{m2_pct}</td><td>{m2_c}</td>"
-                f"<td>{r.m2_time_ms / 1000:.1f}s</td></tr>\n"
+                f"<td>{r.cycle}</td><td>{r.timestamp[:19]}</td>"
+                f"<td>{r.boot_completed_time}</td><td>{r.wifi_ready_time}</td>"
+                f"<td>{r.wifi_init_duration_s:.1f}s</td><td>{scan_empty}</td>"
+                f"<td>{final_conn}</td><td>{success}</td>"
+                f"<td>{fail_type}</td><td>{fail_detail}</td>"
+                f"<td>{reboot_ok}</td><td class='log-path'>{log_path}</td></tr>\n"
             )
 
         # 故障类型统计表格
@@ -1327,6 +1411,7 @@ th{{background:#fafafa;font-weight:600;color:#555}}
 .fail{{color:#ef4444;font-weight:700}}
 .conclusion{{font-size:18px;margin-top:8px}}
 tr:hover{{background:#fafafa}}
+.log-path{{font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace}}
 </style>
 </head>
 <body>
@@ -1367,7 +1452,7 @@ tr:hover{{background:#fafafa}}
 <div class="section">
 <h2>全部记录</h2>
 <table>
-<tr><th>轮次</th><th>时间</th><th>故障</th><th>基线</th><th>M1</th><th>M1开关</th><th>M1AP</th><th>M1恢复率</th><th>M1连接</th><th>M1耗时</th><th>M2</th><th>M2开关</th><th>M2AP</th><th>M2恢复率</th><th>M2连接</th><th>M2耗时</th></tr>
+<tr><th>轮次</th><th>开始时间</th><th>开机完成</th><th>WiFi就绪</th><th>初始化耗时</th><th>列表为空</th><th>连接成功</th><th>本轮成功</th><th>失败类型</th><th>失败详情</th><th>重启OK</th><th>日志路径</th></tr>
 {rows}
 </table>
 </div>
