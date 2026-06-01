@@ -7,9 +7,10 @@ WiFi 异常自愈能力测试脚本
 Android 版本通用，命令多级降级，uiautomator2 可选。
 
 用法:
+  一键启动: 双击 run.bat
   python wifi_self_healing_test.py --cycles 50
   python wifi_self_healing_test.py --cycles 100 --ssid "MyWiFi" --password "12345678"
-  python wifi_self_healing_test.py --cycles 20 --boot-wait 45 --settings-intent android.settings.SETTINGS
+  python wifi_self_healing_test.py --cycles 20 --boot-wait 45
 """
 
 import argparse
@@ -1478,11 +1479,11 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
+  一键启动: 双击 run.bat 或 命令行输入 run.bat
   python wifi_self_healing_test.py                     # 交互式配置
-  python wifi_self_healing_test.py --cycles 50
+  python wifi_self_healing_test.py --cycles 50         # 50轮，自动检测WiFi
   python wifi_self_healing_test.py --cycles 100 --ssid "MyWiFi" --password "12345678"
   python wifi_self_healing_test.py --cycles 20 --boot-wait 45 --output ./results
-  python wifi_self_healing_test.py --cycles 10 --settings-intent android.settings.SETTINGS
         """,
     )
     parser.add_argument("--cycles", type=int, default=DEFAULT_CYCLES,
