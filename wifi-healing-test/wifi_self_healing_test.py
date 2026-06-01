@@ -14,6 +14,7 @@ Android 版本通用，命令多级降级，uiautomator2 可选。
 """
 
 import argparse
+import codecs
 import json
 import os
 import random
@@ -525,13 +526,20 @@ class WifiDetector:
 
     @staticmethod
     def get_connected_ssid() -> Optional[str]:
-        """获取当前连接的 WiFi SSID。"""
-        # 方式1: dumpsys wifi | grep mWifiInfo
+        """获取当前连接的 WiFi SSID。支持多种 ROM 格式。"""
+        # 方式1: dumpsys wifi (最通用)
         _, out, _ = AdbHelper.run("dumpsys wifi | grep 'mWifiInfo'", timeout=10)
         if out:
-            m = re.search(r'SSID:\s*"?([^",\n]+)"?', out, re.IGNORECASE)
-            if m and m.group(1).strip():
-                return m.group(1).strip()
+            for pat in [
+                r'SSID:\s*"?([^",\n]+)"?',
+                r'ssid[=\s]+"?([^",\n]+)"?',
+                r'"([^"]+)"',  # 最后兜底：取第一对引号内容
+            ]:
+                m = re.search(pat, out, re.IGNORECASE)
+                if m:
+                    val = m.group(1).strip()
+                    if val and val not in ("<unknown ssid>", "null", "") and len(val) < 64:
+                        return val
         # 方式2: cmd wifi status
         _, out, _ = AdbHelper.run("cmd wifi status", timeout=5)
         if out:
@@ -539,7 +547,23 @@ class WifiDetector:
                 if "SSID" in line or "ssid" in line:
                     m = re.search(r'"?([^"\n]{1,32})"?\s*$', line.strip())
                     if m:
-                        return m.group(1).strip()
+                        val = m.group(1).strip()
+                        if val and val not in ("<unknown ssid>", "null", ""):
+                            return val
+        # 方式3: dumpsys netstats (部分 ROM)
+        _, out, _ = AdbHelper.run("dumpsys netstats | grep 'iface=wlan'", timeout=5)
+        if out:
+            m = re.search(r'networkId[= ]+(\S+)', out)
+            if m:
+                net_id = m.group(1).strip()
+                # 用 network ID 查 SSID
+                _, out2, _ = AdbHelper.run("cmd wifi list-networks", timeout=5)
+                if out2:
+                    for line in out2.split("\n"):
+                        if net_id in line:
+                            m2 = re.search(r'"([^"]+)"', line)
+                            if m2:
+                                return m2.group(1).strip()
         return None
 
 
@@ -836,28 +860,98 @@ class ConnectionTester:
 
     @staticmethod
     def get_saved_password(ssid: str) -> Optional[str]:
-        """从 wpa_supplicant.conf 读取已保存密码（需 root）。"""
-        _, out, _ = AdbHelper.run("cat /data/misc/wifi/wpa_supplicant.conf 2>/dev/null", timeout=10)
-        if not out:
-            return None
-        # 解析: network={ ... ssid="xxx" ... psk="xxx" ... }
-        # 找到匹配 ssid 的 network 块
-        blocks = re.split(r'\n(?=network=)', out)
+        """从设备读取已保存 WiFi 密码。尝试多条路径，兼容不同 ROM。"""
+        # 路径列表（按优先级）
+        paths = [
+            # Android 标准路径
+            "/data/misc/wifi/wpa_supplicant.conf",
+            # 部分厂商 ROM
+            "/data/vendor/wifi/wpa/wpa_supplicant.conf",
+            "/data/misc/wifi/WifiConfigStore.xml",
+            # Android 11+ Apex
+            "/data/misc/apexdata/com.android.wifi/WifiConfigStore.xml",
+        ]
+
+        for path in paths:
+            # 先尝试直接读取
+            rc, out, _ = AdbHelper.run(
+                f"cat {path} 2>/dev/null", timeout=10
+            )
+            if not out or rc != 0:
+                # 尝试 su 提权
+                rc, out, _ = AdbHelper.run(
+                    f"su -c 'cat {path}' 2>/dev/null", timeout=10
+                )
+            if not out:
+                continue
+
+            # 解析 wpa_supplicant.conf 格式
+            pwd = cls._parse_wpa_supplicant(out, ssid)
+            if pwd:
+                return pwd
+
+            # 解析 WifiConfigStore.xml 格式
+            pwd = cls._parse_wifi_config_xml(out, ssid)
+            if pwd:
+                return pwd
+
+        return None
+
+    @staticmethod
+    def _parse_wpa_supplicant(text: str, target_ssid: str) -> Optional[str]:
+        """解析 wpa_supplicant.conf 中的密码。"""
+        # 按 network={ 分块
+        blocks = re.split(r'\n(?=network=)', text)
         for block in blocks:
+            # 匹配 ssid
             m_ssid = re.search(r'ssid\s*=\s*"?([^"\n]+)"?', block)
-            if m_ssid and m_ssid.group(1).strip() == ssid:
-                # psk (WPA/WPA2)
-                m_psk = re.search(r'psk\s*=\s*"?([^"\n]+)"?', block)
-                if m_psk:
-                    return m_psk.group(1).strip()
-                # 或者 sae_password (WPA3)
-                m_sae = re.search(r'sae_password\s*=\s*"?([^"\n]+)"?', block)
-                if m_sae:
-                    return m_sae.group(1).strip()
-                # wep_key0 (WEP)
-                m_wep = re.search(r'wep_key0\s*=\s*"?([^"\n]+)"?', block)
-                if m_wep:
-                    return m_wep.group(1).strip()
+            if not m_ssid:
+                continue
+            # SSID 可能以 hex 编码: 4d7957694669
+            block_ssid = m_ssid.group(1).strip()
+            if block_ssid != target_ssid:
+                # 尝试解码 hex 编码的 SSID
+                try:
+                    decoded = codecs.decode(block_ssid, 'hex').decode('utf-8', errors='replace')
+                    if decoded != target_ssid:
+                        continue
+                except Exception:
+                    continue
+            # psk (WPA/WPA2)
+            m_psk = re.search(r'psk\s*=\s*"?([^"\n]+)"?', block)
+            if m_psk:
+                psk = m_psk.group(1).strip()
+                # 过滤掉占位符
+                if psk and psk not in ("password", "changeme", "null"):
+                    return psk
+            # sae_password (WPA3)
+            m_sae = re.search(r'sae_password\s*=\s*"?([^"\n]+)"?', block)
+            if m_sae:
+                return m_sae.group(1).strip()
+            # wep_key0 (WEP)
+            m_wep = re.search(r'wep_key0\s*=\s*"?([^"\n]+)"?', block)
+            if m_wep:
+                return m_wep.group(1).strip()
+        return None
+
+    @staticmethod
+    def _parse_wifi_config_xml(text: str, target_ssid: str) -> Optional[str]:
+        """解析 WifiConfigStore.xml 中的密码（Android 10+）。"""
+        # 查找 <string name="SSID">xxx</string> 后面的 PreSharedKey
+        escaped_ssid = target_ssid.replace('"', '&quot;')
+        pattern = rf'<string\s+name="SSID">"?{re.escape(target_ssid)}"?</string>'
+        m = re.search(pattern, text)
+        if not m:
+            # 尝试 hex 编码
+            hex_ssid = codecs.encode(target_ssid.encode('utf-8'), 'hex').decode('ascii')
+            pattern2 = rf'<string\s+name="SSID">"?{re.escape(hex_ssid)}"?</string>'
+            m = re.search(pattern2, text)
+        if m:
+            # 在后面找 PreSharedKey
+            after = text[m.end():m.end() + 500]
+            m_psk = re.search(r'<string\s+name="PreSharedKey">"?([^"<]+)"?</string>', after)
+            if m_psk:
+                return m_psk.group(1).strip()
         return None
 
 

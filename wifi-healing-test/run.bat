@@ -1,71 +1,82 @@
 @echo off
-chcp 65001 >nul
-setlocal enabledelayedexpansion
-
-:: ============================================================
-:: WiFi 异常自愈能力测试 — 一键启动脚本
-:: 用法:
-::   双击 run.bat             → 默认 50 轮，自动检测 WiFi
-::   run.bat 100              → 指定 100 轮
-::   run.bat 50 -s MyWiFi     → 指定 SSID（不自动检测）
-:: ============================================================
+:: 切换到脚本所在目录（修复双击时工作目录不对的问题）
+cd /d "%~dp0"
 
 title WiFi 异常自愈能力测试
 
 echo.
-echo ============================================================
-echo          WiFi 异常自愈能力测试 — 一键启动
-echo ============================================================
+echo  ============================================================
+echo           WiFi 异常自愈能力测试 — 一键启动
+echo  ============================================================
 echo.
 
-:: ---- 检查 Python ----
-echo [1/4] 检查 Python ...
+:: ============================================================
+:: 第 1 步：检查 Python
+:: ============================================================
+echo  [1/4] 检查 Python ...
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [FAIL] 未找到 Python，请先安装 Python 3.8+
-    echo        下载: https://www.python.org/downloads/
+    echo  [FAIL] 未找到 Python，请先安装 Python 3.8+
+    echo         下载: https://www.python.org/downloads/
     pause
     exit /b 1
 )
-for /f "tokens=2" %%v in ('python --version 2^>^&1') do echo         Python %%v ✓
+python --version 2>&1 | findstr /i "Python" >nul
+echo         Python 已安装 ✓
 
-:: ---- 检查 ADB ----
-echo [2/4] 检查 ADB ...
+:: ============================================================
+:: 第 2 步：检查 ADB
+:: ============================================================
+echo  [2/4] 检查 ADB ...
 adb --version >nul 2>&1
 if errorlevel 1 (
-    echo [FAIL] 未找到 ADB，请将 ADB 添加到系统 PATH
-    echo        下载: https://developer.android.com/studio/releases/platform-tools
+    echo  [FAIL] 未找到 ADB
+    echo         1. 下载 Platform Tools: https://developer.android.com/studio/releases/platform-tools
+    echo         2. 解压后将目录加入系统 PATH 环境变量
+    echo         3. 或把 adb.exe 复制到此脚本同目录
     pause
     exit /b 1
 )
-for /f "tokens=1,2 delims= " %%a in ('adb version 2^>^&1 ^| findstr "Android"') do echo         ADB %%a %%b ✓
+echo         ADB 已安装 ✓
 
-:: ---- 检查设备 ----
-echo [3/4] 检查设备连接 ...
-for /f "skip=1 tokens=1" %%d in ('adb devices 2^>nul ^| findstr /v "^*" ^| findstr /v "^$"') do (
-    set DEVICE=%%d
+:: ============================================================
+:: 第 3 步：检查设备
+:: ============================================================
+echo  [3/4] 检查设备连接 ...
+
+set "DEVICE="
+for /f "skip=1 tokens=1" %%d in ('adb devices 2^>nul') do (
+    set "LINE=%%d"
+    if not "!LINE!"=="List" if not "!LINE!"=="" if "!LINE:~0,1!" neq "*" (
+        if "!DEVICE!"=="" set "DEVICE=%%d"
+    )
 )
+
 if "%DEVICE%"=="" (
-    echo [FAIL] 未检测到已连接的设备，请确认：
-    echo         1. USB 已连接
-    echo         2. 已开启 USB 调试
-    echo         3. 已授权此电脑调试
+    echo  [FAIL] 未检测到设备
     echo.
-    echo 当前 adb devices 输出：
+    echo  当前 adb devices 输出：
     adb devices
+    echo.
+    echo  请确认：
+    echo    1. USB 已连接
+    echo    2. 已开启「USB 调试」（设置 - 开发者选项）
+    echo    3. 已在设备上点击「允许 USB 调试」
     pause
     exit /b 1
 )
 echo         设备: %DEVICE% ✓
 
-:: ---- 安装 Python 依赖 ----
-echo [4/4] 检查依赖 ...
+:: ============================================================
+:: 第 4 步：检查 Python 依赖
+:: ============================================================
+echo  [4/4] 检查依赖 ...
 pip show uiautomator2 >nul 2>&1
 if errorlevel 1 (
-    echo         正在安装 uiautomator2（可选，svc命令降级时才需要）...
-    pip install uiautomator2 >nul 2>&1
+    echo         正在安装 uiautomator2（可选，svc 命令降级时才需要）...
+    pip install uiautomator2 -q 2>nul
     if errorlevel 1 (
-        echo         [WARN] uiautomator2 安装失败，将仅使用 svc 命令
+        echo         [WARN] uiautomator2 安装失败（不影响主要功能）
     ) else (
         echo         uiautomator2 安装完成 ✓
     )
@@ -73,51 +84,116 @@ if errorlevel 1 (
     echo         uiautomator2 已安装 ✓
 )
 
+:: ============================================================
+:: 第 5 步：交互式配置参数
+:: ============================================================
 echo.
-echo ============================================================
-echo         环境检查完成，即将启动测试
-echo ============================================================
+echo  ============================================================
+echo          配置测试参数
+echo  ============================================================
 echo.
-echo   测试说明:
-echo     - 每轮：重启设备 → 注入随机 WiFi 故障 → 自愈恢复
-echo     - 方案一：开关 WiFi（svc 命令）
-echo     - 方案二：飞行模式切换（方案一失败时触发）
-echo     - 会自动检测当前连接的 WiFi SSID 和密码
-echo     - 报告输出到 .\reports\ 目录
-echo.
-echo   按 Ctrl+C 可随时终止测试
-echo ============================================================
+echo  直接按 Enter 使用默认值（括号内为默认值）
 echo.
 
-:: ---- 解析参数 ----
-set CYCLES=50
-set EXTRA_ARGS=
-
-if not "%~1"=="" (
-    :: 检查第一个参数是否为纯数字
-    set "ARG1=%~1"
-    set "ISNUM=1"
-    for /f "delims=0123456789" %%n in ("!ARG1!") do set "ISNUM=0"
-    if "!ISNUM!"=="1" (
-        set CYCLES=%~1
-        shift
-    )
+:: --- 测试轮数 ---
+set "CYCLES=50"
+set /p "CYCLES=  测试轮数 [50]: "
+if "%CYCLES%"=="" set "CYCLES=50"
+:: 验证是否为数字
+set "TMP=%CYCLES%"
+set "ISNUM=1"
+for /f "delims=0123456789" %%n in ("%TMP%") do set "ISNUM=0"
+if "%ISNUM%"=="0" (
+    echo  输入无效，使用默认值 50
+    set "CYCLES=50"
 )
-:: 剩余参数原样传递
-set EXTRA_ARGS=%*
 
-:: ---- 运行测试 ----
-echo 启动测试: %CYCLES% 轮
-echo 额外参数: %EXTRA_ARGS%
-echo.
-python wifi_self_healing_test.py --cycles %CYCLES% %EXTRA_ARGS%
+:: --- 开机等待时间 ---
+set "BOOT_WAIT=15"
+set /p "BOOT_WAIT=  开机后等待秒数 [15]: "
+if "%BOOT_WAIT%"=="" set "BOOT_WAIT=15"
+set "TMP=%BOOT_WAIT%"
+set "ISNUM=1"
+for /f "delims=0123456789" %%n in ("%TMP%") do set "ISNUM=0"
+if "%ISNUM%"=="0" (
+    echo  输入无效，使用默认值 15
+    set "BOOT_WAIT=15"
+)
 
-:: ---- 结束 ----
+:: --- WiFi 凭据 ---
 echo.
-echo ============================================================
-echo          测试完成
-echo ============================================================
-echo   报告保存在: .\reports\
-echo   逐轮日志:   .\reports\logs\
+echo  WiFi 连接验证（可选）
+echo    - 留空 = 自动检测当前连接的 WiFi SSID 和密码
+echo    - 输入 SSID = 手动指定 WiFi
+echo    - 输入 none = 跳过连接验证，仅验证扫描恢复
+echo.
+set /p "SSID=  WiFi SSID [自动检测]: "
+if /i "%SSID%"=="none" set "SSID="
+
+if not "%SSID%"=="" (
+    set /p "PASSWORD=  WiFi 密码: "
+    set "PASS_ARG=--password !PASSWORD!"
+    set "SSID_ARG=--ssid !SSID!"
+    :: 用户手动指定了 SSID，禁用自动检测
+    set "AUTO_ARG=--no-auto-detect"
+) else (
+    :: SSID 为空 = 自动检测 + 自动获取密码
+    echo         将自动检测当前连接的 WiFi SSID 和密码
+    set "SSID_ARG="
+    set "PASS_ARG="
+    set "AUTO_ARG="
+)
+
+:: --- 输出目录 ---
+set "OUTPUT=.\reports"
+set /p "OUTPUT=  报告输出目录 [.\reports]: "
+if "%OUTPUT%"=="" set "OUTPUT=.\reports"
+
+:: ============================================================
+:: 确认并启动
+:: ============================================================
+echo.
+echo  ============================================================
+echo          确认配置
+echo  ============================================================
+echo   测试轮数:     %CYCLES%
+echo   开机等待:     %BOOT_WAIT% 秒
+if not "%SSID%"=="" (
+    echo   WiFi SSID:    %SSID%
+    echo   WiFi 密码:    (已输入)
+) else (
+    echo   WiFi 凭据:    自动检测
+)
+echo   报告目录:     %OUTPUT%
+echo.
+set /p "CONFIRM=  确认启动？[Y/n]: "
+if /i "%CONFIRM%"=="n" (
+    echo  已取消
+    pause
+    exit /b 0
+)
+
+:: ============================================================
+:: 运行测试
+:: ============================================================
+echo.
+echo  ============================================================
+echo          正在启动测试...
+echo  ============================================================
+echo   提示: 按 Ctrl+C 可随时终止测试
+echo.
+python wifi_self_healing_test.py --cycles %CYCLES% --boot-wait %BOOT_WAIT% %SSID_ARG% %PASS_ARG% %AUTO_ARG% --output "%OUTPUT%"
+
+:: ============================================================
+:: 结束
+:: ============================================================
+echo.
+echo  ============================================================
+echo          测试结束
+echo  ============================================================
+echo   报告目录: %OUTPUT%
+echo            %OUTPUT%\wifi_healing_*.json
+echo            %OUTPUT%\wifi_healing_*.html
+echo   逐轮日志: %OUTPUT%\logs\
 echo.
 pause
