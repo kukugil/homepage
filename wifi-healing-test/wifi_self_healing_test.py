@@ -832,15 +832,25 @@ class ConnectionTester:
         return ssid in out
 
     @staticmethod
-    def connect_and_verify(ssid: str, password: str, timeout: int = 15) -> bool:
-        """连接到目标 WiFi 并验证是否成功。"""
-        rc, out, err = AdbHelper.run(
-            f'cmd wifi connect-network "{ssid}" wpa2 "{password}"',
-            timeout=timeout,
-        )
-        if rc != 0 and "error" in (out + err).lower():
-            return False
-        time.sleep(CONNECT_WAIT)
+    def connect_and_verify(ssid: str, password: Optional[str] = None, timeout: int = 15) -> bool:
+        """连接到目标 WiFi 并验证是否成功。
+
+        如果有密码则主动连接；如果无密码但网络已保存，则依赖 Android 自动回连。
+        """
+        if password:
+            # 主动连接
+            rc, out, err = AdbHelper.run(
+                f'cmd wifi connect-network "{ssid}" wpa2 "{password}"',
+                timeout=timeout,
+            )
+            if rc != 0 and "error" in (out + err).lower():
+                return False
+            time.sleep(CONNECT_WAIT)
+        else:
+            # 无密码，依赖自动回连（已保存网络）
+            # Android 开启 WiFi 后会自动连接已保存的网络，等待一下
+            print(f"    [连接] 无密码，等待自动回连已保存网络...")
+            time.sleep(CONNECT_WAIT + 3)
 
         # 方式 1：dumpsys
         _, out, _ = AdbHelper.run("dumpsys wifi | grep 'mWifiInfo'", timeout=10)
@@ -1010,7 +1020,7 @@ class TestRunner:
                         self.password = pwd
                         print(f"  自动获取密码成功")
                     else:
-                        print(f"  [WARN] 无法自动获取密码，连接验证将跳过")
+                        print(f"  (无法自动读取密码，将依赖自动回连)")
             else:
                 print(f"  未检测到当前连接的 WiFi，连接验证将跳过")
 
@@ -1021,9 +1031,13 @@ class TestRunner:
             print(f"连接验证: {self.ssid}")
             saved = ConnectionTester.is_saved(self.ssid)
             if not saved:
-                print(f"  [WARN] '{self.ssid}' 未在已保存网络中找到")
-            has_pwd = bool(self.password)
-            print(f"  密码: {'已获取' if has_pwd else '无 (连接验证将跳过)'}")
+                print(f"  [WARN] '{self.ssid}' 未在已保存网络中找到，连接验证将跳过")
+            else:
+                has_pwd = bool(self.password)
+                if has_pwd:
+                    print(f"  密码: 已获取 → 主动连接验证")
+                else:
+                    print(f"  密码: 无 → 依赖自动回连验证（已保存网络）")
         print("=" * 60)
 
         for i in range(1, self.cycles + 1):
@@ -1182,13 +1196,17 @@ class TestRunner:
 
         # 连接验证
         connect_ok = True
-        if self.ssid and self.password and scan:
-            connect_ok = ConnectionTester.connect_and_verify(self.ssid, self.password)
-            if connect_ok:
-                ConnectionTester.disconnect()
-            print(f"    [验证] 连接 {self.ssid}: {'OK' if connect_ok else 'FAIL'}")
-        elif self.ssid and not self.password:
-            connect_ok = True  # 有SSID但无密码，跳过
+        if self.ssid and scan:
+            # 先确认网络是否已保存
+            is_saved = ConnectionTester.is_saved(self.ssid)
+            if self.password or is_saved:
+                connect_ok = ConnectionTester.connect_and_verify(self.ssid, self.password)
+                if connect_ok:
+                    ConnectionTester.disconnect()
+                print(f"    [验证] 连接 {self.ssid}: {'OK' if connect_ok else 'FAIL'}")
+            else:
+                print(f"    [验证] {self.ssid} 未保存且无密码，跳过连接验证")
+                connect_ok = True  # 非关键失败，不标记为 FAIL
         elif not self.ssid:
             connect_ok = True  # 无SSID，跳过
 
