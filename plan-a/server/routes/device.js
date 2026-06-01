@@ -209,6 +209,38 @@ router.get('/devices/:sn/queue',
 
 /**
  * @openapi
+ * /api/v1/devices/{sn}/bundle:
+ *   get:
+ *     tags: [Devices]
+ *     summary: 获取选中书籍的纯文本 URL 列表（供 MCU 逐行下载）
+ *     parameters:
+ *       - in: path
+ *         name: sn
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: 每行一个下载 URL 的纯文本
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
+router.get('/devices/:sn/bundle',
+  validateSN,
+  asyncHandler(async (req, res) => {
+    const sn = req.validatedSN;
+    const books = db.getSelectedBooksBySn(sn);
+    const urls = books.map(b =>
+      `/dl/${sn}/books/${encodeURIComponent(sanitizeTitle(b.title))}.${b.format}`
+    );
+    res.header('Content-Type', 'text/plain; charset=utf-8');
+    res.send(urls.join('\n') + (urls.length > 0 ? '\n' : ''));
+  })
+);
+
+/**
+ * @openapi
  * /api/v1/devices/{sn}/status:
  *   get:
  *     tags: [Devices]
