@@ -19,19 +19,6 @@ const app = express();
 app.set('etag', false);
 app.use(express.json());
 
-// Dynamic queue endpoint — returns only selected books (before static middleware)
-app.get('/dl/:sn/queue', (req, res) => {
-  const sn = req.params.sn;
-  try {
-    sanitizeSN(sn);
-  } catch {
-    return res.status(400).json({ error: 'Invalid SN' });
-  }
-  const { buildQueue } = require('./manifest');
-  res.header('Access-Control-Allow-Origin', '*');
-  res.json(buildQueue(sn));
-});
-
 // Static file serving for /dl/
 app.use('/dl', (req, res, next) => {
   const seg = req.path.split('/').filter(Boolean);

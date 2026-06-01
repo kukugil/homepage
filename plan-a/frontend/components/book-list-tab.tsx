@@ -294,7 +294,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       setBooks(prev => prev.map(b => ({ ...b, selected: selectedIds.has(b.id) })))
       setSelectedIds(new Set())
       setError("")
-      setSuccessMsg(`已推送 ${count} 本书，MCU 访问 /dl/${deviceSN}/queue 即可下载`)
+      setSuccessMsg(`已推送 ${count} 本书，MCU 访问 /api/v1/devices/${deviceSN}/queue 即可下载`)
       setTimeout(() => setSuccessMsg(""), 5000)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "推送失败")

@@ -186,6 +186,29 @@ router.put('/devices/:sn/books/reorder',
 
 /**
  * @openapi
+ * /api/v1/devices/{sn}/queue:
+ *   get:
+ *     tags: [Devices]
+ *     summary: 获取选中书籍队列（供 MCU 下载）
+ *     parameters:
+ *       - in: path
+ *         name: sn
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: 选中书籍列表
+ */
+router.get('/devices/:sn/queue',
+  validateSN,
+  asyncHandler(async (req, res) => {
+    const { buildQueue } = require('../manifest');
+    res.json(buildQueue(req.validatedSN));
+  })
+);
+
+/**
+ * @openapi
  * /api/v1/devices/{sn}/status:
  *   get:
  *     tags: [Devices]
