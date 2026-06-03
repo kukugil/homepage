@@ -48,7 +48,16 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
     let stream: MediaStream
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          // advanced 约束：自动对焦 + 自动曝光
+          advanced: [
+            { focusMode: "continuous" as any },
+            { exposureMode: "continuous" as any },
+          ],
+        },
         audio: false,
       })
     } catch (err: unknown) {
@@ -91,7 +100,7 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
     }
 
     let lastScan = 0
-    const SCAN_INTERVAL = 150 // ms between scans
+    const SCAN_INTERVAL = 100 // ms between scans
 
     function scan() {
       if (stoppedRef.current) return
@@ -126,11 +135,15 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
         .then((codes) => {
           if (stoppedRef.current) return
           for (const code of codes) {
-            const sn = code.rawValue.trim()
-            if (SN_REGEX.test(sn)) {
+            const raw = code.rawValue.trim()
+            // 从内容中提取 SN：支持纯 SN、URL 中的 SN、带前缀的 SN 等
+            // 例如 "SN001"、"https://ereader.fun/SN001"、"SN:SN001" 都能识别
+            const match = raw.match(/[a-zA-Z0-9][a-zA-Z0-9-]{0,63}/)
+            const candidate = match ? match[0] : ""
+            if (candidate && SN_REGEX.test(candidate)) {
               stoppedRef.current = true
               stream.getTracks().forEach(t => t.stop())
-              onScan(sn)
+              onScan(candidate)
               return
             }
           }
@@ -186,11 +199,13 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
         config,
         (decodedText: string) => {
           if (stoppedRef.current) return
-          const sn = decodedText.trim()
-          if (SN_REGEX.test(sn)) {
+          const raw = decodedText.trim()
+          const match = raw.match(/[a-zA-Z0-9][a-zA-Z0-9-]{0,63}/)
+          const candidate = match ? match[0] : ""
+          if (candidate && SN_REGEX.test(candidate)) {
             stoppedRef.current = true
             try { scanner.stop().catch(() => {}) } catch {}
-            onScan(sn)
+            onScan(candidate)
           }
         },
         () => {} // 扫描错误静默忽略
