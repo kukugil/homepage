@@ -173,7 +173,6 @@ interface BookListTabProps {
 export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const { deviceSN, isValidSN } = useSN()
   const [books, setBooks] = useState<Book[]>([])
-  const [hasChanges, setHasChanges] = useState(false)
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
@@ -201,7 +200,6 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       const mapped = data.map(mapBook)
       setBooks(mapped)
       setSelectedIds(new Set(mapped.filter(b => b.selected).map(b => b.id)))
-      setHasChanges(false)
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       setError(err instanceof Error ? err.message : "加载失败")
@@ -237,14 +235,14 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
-    if (over && active.id !== over.id) {
-      setBooks((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over.id)
-        setHasChanges(true)
-        return arrayMove(items, oldIndex, newIndex)
-      })
-    }
+    if (!over || active.id === over.id || !deviceSN) return
+
+    const oldIndex = books.findIndex((item) => item.id === active.id)
+    const newIndex = books.findIndex((item) => item.id === over.id)
+    const reordered = arrayMove(books, oldIndex, newIndex)
+    setBooks(reordered)
+    // 拖拽后自动保存，无需手动点"保存"
+    reorderBooks(deviceSN, reordered.map((b) => b.id)).catch(() => {})
   }
 
   const handleDelete = async (id: string) => {
@@ -255,16 +253,6 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "删除失败")
-    }
-  }
-
-  const handleSave = async () => {
-    if (!deviceSN) return
-    try {
-      await reorderBooks(deviceSN, books.map((b) => b.id))
-      setHasChanges(false)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "保存排序失败")
     }
   }
 
@@ -361,13 +349,15 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-2 sm:gap-3 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        {/* 刷新 — 图标按钮 */}
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className={`flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-2 bg-secondary text-foreground text-sm rounded hover:bg-secondary/70 transition-colors flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-60`}
+          title="刷新列表"
+          className="w-9 h-9 flex items-center justify-center bg-secondary text-foreground rounded hover:bg-secondary/70 transition-colors disabled:opacity-60 flex-shrink-0"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" className={`text-current sm:w-4 sm:h-4 ${refreshing ? 'animate-spin' : ''}`}>
+          <svg width="16" height="16" viewBox="0 0 16 16" className={`text-current ${refreshing ? 'animate-spin' : ''}`}>
             <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
             <rect x="9" y="3" width="2" height="2" fill="currentColor"/>
             <rect x="11" y="5" width="2" height="2" fill="currentColor"/>
@@ -381,25 +371,6 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
             <rect x="3" y="5" width="2" height="2" fill="currentColor"/>
             <rect x="5" y="3" width="2" height="2" fill="currentColor"/>
           </svg>
-          {refreshing ? '刷新中...' : '刷新'}
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!hasChanges}
-          className={`
-            flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-2 text-sm rounded flex items-center justify-center gap-1.5 sm:gap-2 transition-colors
-            ${hasChanges
-              ? "bg-accent text-accent-foreground hover:bg-accent/80"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
-            }
-          `}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" className="text-current sm:w-4 sm:h-4">
-            <rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"/>
-            <rect x="5" y="2" width="6" height="4" fill="currentColor"/>
-            <rect x="4" y="9" width="8" height="5" fill="currentColor"/>
-          </svg>
-          保存
         </button>
         {/* Push selected */}
         <button
@@ -417,7 +388,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
           {pushing ? '推送中...' : `推送选中${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
         </button>
         {/* 下载目标: Flash / TF卡 */}
-        <div className="flex items-center gap-1 bg-secondary rounded p-0.5">
+        <div className="flex items-center gap-1 bg-secondary rounded p-0.5 flex-shrink-0">
           <button
             onClick={() => setTarget(1)}
             className={`px-2.5 py-1 text-xs rounded transition-colors ${
