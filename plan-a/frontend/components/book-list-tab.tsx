@@ -252,6 +252,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
     try {
       await deleteBook(deviceSN, id)
       setBooks((prev) => prev.filter((b) => b.id !== id))
+      setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "删除失败")
     }
