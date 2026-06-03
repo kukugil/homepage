@@ -31,15 +31,9 @@ export interface BatchUploadResult {
   fail_count: number
 }
 
-function authHeaders(token?: string): Record<string, string> {
-  if (token) return { Authorization: `Bearer ${token}` }
-  return {}
-}
-
 export function uploadBook(
   sn: string,
   file: File,
-  token?: string,
   onProgress?: (loaded: number, total: number) => void
 ): Promise<UploadResult> {
   return new Promise((resolve, reject) => {
@@ -64,8 +58,6 @@ export function uploadBook(
     xhr.addEventListener("error", () => reject(new Error("Network error")))
     xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")))
     xhr.open("POST", "/api/v1/books/upload")
-    const headers = authHeaders(token)
-    Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
     xhr.send(formData)
   })
 }
@@ -73,7 +65,6 @@ export function uploadBook(
 export function uploadBooks(
   sn: string,
   files: File[],
-  token?: string,
   onProgress?: (loaded: number, total: number) => void
 ): Promise<BatchUploadResult> {
   return new Promise((resolve, reject) => {
@@ -97,19 +88,12 @@ export function uploadBooks(
     })
     xhr.addEventListener("error", () => reject(new Error("Network error")))
     xhr.open("POST", "/api/v1/books/batch-upload")
-    const headers = authHeaders(token)
-    Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
     xhr.send(formData)
   })
 }
 
-export async function fetchBooks(sn: string, opts?: string | { token?: string; signal?: AbortSignal }): Promise<BookResponse[]> {
-  let token: string | undefined
-  let signal: AbortSignal | undefined
-  if (typeof opts === 'string') { token = opts }
-  else if (opts) { token = opts.token; signal = opts.signal }
+export async function fetchBooks(sn: string, signal?: AbortSignal): Promise<BookResponse[]> {
   const resp = await fetch(`/api/v1/devices/${encodeURIComponent(sn)}/books`, {
-    headers: authHeaders(token),
     signal,
   })
   if (!resp.ok) {

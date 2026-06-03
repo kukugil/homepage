@@ -17,7 +17,6 @@ const CONFIG = {
   COVER_QUALITY: 70,
   COVER_MAX_SIZE: 30 * 1024,               // 30KB
   SN_PATTERN: /^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/,
-  TOKEN_AUTH_ENABLED: process.env.TOKEN_AUTH === 'true',
   RATE_LIMIT_WINDOW_MS: 60 * 1000,
   RATE_LIMIT_MAX: 30,
 };

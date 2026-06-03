@@ -20,8 +20,6 @@ interface UploadTabProps {
 
 export function UploadTab({ onUploadComplete }: UploadTabProps) {
   const { deviceSN, isValidSN } = useSN()
-  const [useAccessToken, setUseAccessToken] = useState(false)
-  const [accessToken, setAccessToken] = useState("")
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [totalProgress, setTotalProgress] = useState(0)
   const [totalSize, setTotalSize] = useState(0)
@@ -38,12 +36,10 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
     setTotalProgress(0)
     setTotalSize(acceptedFiles.reduce((sum, f) => sum + f.size, 0))
 
-    const token = useAccessToken ? accessToken || undefined : undefined
-
     if (acceptedFiles.length === 1) {
       const file = acceptedFiles[0]
       const fileEntry = newFiles[0]
-      uploadBook(deviceSN, file, token, (loaded, total) => {
+      uploadBook(deviceSN, file, (loaded, total) => {
         setTotalProgress(Math.round((loaded / total) * 100))
       })
         .then((result) => {
@@ -66,7 +62,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
           )
         })
     } else if (acceptedFiles.length > 1) {
-      uploadBooks(deviceSN, acceptedFiles, token, (loaded, total) => {
+      uploadBooks(deviceSN, acceptedFiles, (loaded, total) => {
         setTotalProgress(Math.round((loaded / total) * 100))
       })
         .then((result) => {
@@ -98,7 +94,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
           )
         })
     }
-  }, [deviceSN, useAccessToken, accessToken, onUploadComplete])
+  }, [deviceSN, onUploadComplete])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -192,42 +188,6 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
             />
           </div>
         </div>
-      )}
-
-      {/* Access Token Option */}
-      <label className="flex items-center gap-2 sm:gap-3 cursor-pointer group">
-        <div
-          className={`
-            w-5 h-5 border-2 flex items-center justify-center transition-colors flex-shrink-0
-            ${useAccessToken
-              ? "bg-primary border-primary"
-              : "bg-input border-secondary group-hover:border-accent"
-            }
-          `}
-          onClick={() => setUseAccessToken(!useAccessToken)}
-        >
-          {useAccessToken && (
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <rect x="2" y="6" width="2" height="2" fill="currentColor" className="text-primary-foreground"/>
-              <rect x="4" y="8" width="2" height="2" fill="currentColor" className="text-primary-foreground"/>
-              <rect x="6" y="6" width="2" height="2" fill="currentColor" className="text-primary-foreground"/>
-              <rect x="8" y="4" width="2" height="2" fill="currentColor" className="text-primary-foreground"/>
-              <rect x="10" y="2" width="2" height="2" fill="currentColor" className="text-primary-foreground"/>
-            </svg>
-          )}
-        </div>
-        <span className="text-foreground text-sm">使用访问令牌</span>
-      </label>
-
-      {useAccessToken && (
-        <input
-          type="text"
-          value={accessToken}
-          onChange={(e) => setAccessToken(e.target.value)}
-          className="bg-input border-2 border-secondary px-3 py-2.5 text-foreground
-            focus:border-accent focus:outline-none w-full max-w-xs text-sm"
-          placeholder="输入访问令牌"
-        />
       )}
 
       {/* Uploaded Files List */}

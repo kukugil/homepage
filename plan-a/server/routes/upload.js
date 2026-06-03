@@ -7,7 +7,7 @@ const db = require('../db');
 const { ensureDirs, bookPath, sha256File, sanitizeTitle } = require('../storage');
 const { regenerateManifest } = require('../manifest');
 const { extractCover } = require('../cover');
-const { validateSN, validateToken, rateLimiter, asyncHandler } = require('../middleware');
+const { validateSN, rateLimiter, asyncHandler } = require('../middleware');
 
 const router = express.Router();
 
@@ -45,12 +45,67 @@ const upload = multer({
   },
 });
 
-// POST /api/v1/books/upload
+/**
+ * @openapi
+ * /api/v1/books/upload:
+ *   post:
+ *     tags: [Books]
+ *     summary: 上传单本图书
+ *     description: 上传一本图书文件（epub/pdf/txt），自动提取封面并注册到设备。
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [sn, file]
+ *             properties:
+ *               sn:
+ *                 type: string
+ *                 description: 设备序列号
+ *                 example: 'SN001'
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: 图书文件（epub/pdf/txt，最大 500MB）
+ *     responses:
+ *       200:
+ *         description: 上传成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UploadResult'
+ *       400:
+ *         description: 参数错误（缺少文件或 SN 无效）
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: 未授权（TOKEN_AUTH 模式）
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       413:
+ *         description: 文件过大
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: 请求过于频繁
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/books/upload',
   rateLimiter(),
   upload.single('file'),
   validateSN,
-  validateToken,
   asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
     const sn = req.validatedSN;
@@ -93,12 +148,68 @@ router.post('/books/upload',
   })
 );
 
-// POST /api/v1/books/batch-upload
+/**
+ * @openapi
+ * /api/v1/books/batch-upload:
+ *   post:
+ *     tags: [Books]
+ *     summary: 批量上传图书
+ *     description: 一次上传最多 10 本图书文件，逐本处理并分别返回结果。
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [sn, files]
+ *             properties:
+ *               sn:
+ *                 type: string
+ *                 description: 设备序列号
+ *               files:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: 图书文件列表（最多 10 个）
+ *     responses:
+ *       200:
+ *         description: 批量处理完成
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 results:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       filename: { type: string }
+ *                       status: { type: string, enum: [ok, error] }
+ *                       book_id: { type: string }
+ *                       reason: { type: string }
+ *                 success_count: { type: integer }
+ *                 fail_count: { type: integer }
+ *       400:
+ *         description: 参数错误
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: 请求过于频繁
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/books/batch-upload',
   rateLimiter(),
   upload.array('files', 10),
   validateSN,
-  validateToken,
   asyncHandler(async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files provided' });

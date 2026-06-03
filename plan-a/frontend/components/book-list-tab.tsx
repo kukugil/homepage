@@ -196,7 +196,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
     setLoading(true)
     setError("")
     try {
-      const data = await fetchBooks(sn, { signal })
+      const data = await fetchBooks(sn, signal)
       const mapped = data.map(mapBook)
       setBooks(mapped)
       setSelectedIds(new Set(mapped.filter(b => b.selected).map(b => b.id)))

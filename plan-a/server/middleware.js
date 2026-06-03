@@ -3,29 +3,12 @@ const { sanitizeSN } = require('./storage');
 
 function validateSN(req, res, next) {
   try {
-    req.validatedSN = sanitizeSN(req.params.sn || req.body.sn || req.query.sn);
+    const raw = req.params.sn || req.body.sn || req.query.sn;
+    if (!raw || typeof raw !== 'string') throw new Error('Missing or invalid SN');
+    req.validatedSN = sanitizeSN(raw);
     next();
   } catch {
     res.status(400).json({ error: 'Invalid SN format. Use alphanumeric + hyphens, max 64 chars.' });
-  }
-}
-
-function validateToken(req, res, next) {
-  if (!CONFIG.TOKEN_AUTH_ENABLED) return next();
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Authorization token required' });
-  }
-  const token = auth.slice(7);
-  try {
-    const decoded = Buffer.from(token, 'base64').toString('utf-8');
-    const [sn] = decoded.split(':');
-    if (sn !== req.validatedSN) {
-      return res.status(403).json({ error: 'Token does not match SN' });
-    }
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid token format' });
   }
 }
 
@@ -84,4 +67,4 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
-module.exports = { validateSN, validateToken, rateLimiter, basicAuth, errorHandler, asyncHandler };
+module.exports = { validateSN, rateLimiter, basicAuth, errorHandler, asyncHandler };
