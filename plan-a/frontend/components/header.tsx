@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import type { ComponentType } from "react"
 import { useSN } from "@/hooks/sn-context"
-import { useBle } from "@/hooks/use-ble"
 import { useTheme } from "next-themes"
 
 interface QrScannerProps {
@@ -12,12 +11,9 @@ interface QrScannerProps {
 }
 
 export function Header() {
-  const { deviceSN, setDeviceSN, isValidSN, isConnected, snExists, checking } = useSN()
-  const { connect, autoConnect } = useBle()
+  const { deviceSN, setDeviceSN, isValidSN, snExists, checking } = useSN()
   const { theme, setTheme } = useTheme()
-  const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState("")
-  const [bleAvailable, setBleAvailable] = useState(false)
   const [camAvailable, setCamAvailable] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -26,20 +22,10 @@ export function Header() {
 
   useEffect(() => { setMounted(true) }, [])
 
-  // 异步检测硬件是否真正可用（非仅 API 存在）
+  // 异步检测摄像头硬件是否真正可用
   useEffect(() => {
     let cancelled = false
     async function detect() {
-      // BLE: getAvailability() 才代表有蓝牙硬件
-      if (typeof navigator !== "undefined" && navigator.bluetooth) {
-        try {
-          const avail = await navigator.bluetooth.getAvailability()
-          if (!cancelled) setBleAvailable(avail)
-        } catch {
-          if (!cancelled) setBleAvailable(false)
-        }
-      }
-      // 摄像头: enumerateDevices 检查是否有 videoinput 设备
       if (typeof navigator !== "undefined" && navigator.mediaDevices?.enumerateDevices) {
         try {
           const devices = await navigator.mediaDevices.enumerateDevices()
@@ -52,24 +38,6 @@ export function Header() {
     detect()
     return () => { cancelled = true }
   }, [])
-
-  // 页面加载时自动连接已配对 BLE 设备
-  useEffect(() => {
-    if (!bleAvailable) return
-    autoConnect().catch(() => {})
-  }, [bleAvailable, autoConnect])
-
-  const handleConnect = useCallback(async () => {
-    setError("")
-    setConnecting(true)
-    try {
-      await connect()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "连接失败")
-    } finally {
-      setConnecting(false)
-    }
-  }, [connect])
 
   const handleScan = useCallback((sn: string) => {
     setDeviceSN(sn)
@@ -87,7 +55,7 @@ export function Header() {
       }
       setShowScanner(true)
     } catch {
-      setError("此设备不支持摄像头扫描。请手动输入 SN 或使用 BLE 连接。")
+      setError("此设备不支持摄像头扫描。请手动输入 SN。")
     } finally {
       setQrLoading(false)
     }
@@ -136,7 +104,7 @@ export function Header() {
 
         {/* Right side: Device Connection + Buttons + Theme */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
-          {/* SN Input with scan button + BLE button */}
+          {/* SN Input with scan button */}
           <div className="flex items-stretch gap-0 w-full sm:w-auto">
             <div className="flex items-center gap-2 bg-card border border-border rounded-l-lg px-2 sm:px-3 py-2 whitespace-nowrap">
               <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -148,7 +116,7 @@ export function Header() {
               <span className="text-xs sm:text-sm text-muted-foreground">
                 {!isValidSN ? '未连接'
                   : checking ? '查询中'
-                  : snExists ? (isConnected ? 'BLE已连' : '已连接')
+                  : snExists ? '已连接'
                   : '无数据'}
               </span>
             </div>
@@ -158,7 +126,8 @@ export function Header() {
               onChange={(e) => setDeviceSN(e.target.value)}
               className={`bg-card border border-border border-l-0 px-3 py-2 text-foreground text-sm
                 focus:outline-none focus:border-accent/50 w-28 sm:w-36
-                ${deviceSN && !isValidSN ? "border-destructive text-destructive" : ""}`}
+                ${deviceSN && !isValidSN ? "border-destructive text-destructive" : ""}
+                ${!camAvailable ? "rounded-r-lg" : ""}`}
               placeholder="输入设备SN"
             />
             {/* QR 扫描按钮 — 仅摄像头可用时显示 */}
@@ -167,7 +136,7 @@ export function Header() {
               onClick={handleOpenScanner}
               disabled={qrLoading}
               title="扫描 SN 二维码"
-              className="bg-card border border-border border-l-0 px-2 py-2 hover:bg-secondary/30 transition-colors flex-shrink-0 disabled:opacity-50"
+              className="bg-card border border-border border-l-0 px-2 py-2 hover:bg-secondary/30 transition-colors flex-shrink-0 disabled:opacity-50 rounded-r-lg"
               aria-label="扫描二维码"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-foreground">
@@ -178,20 +147,6 @@ export function Header() {
                 <line x1="21" y1="17" x2="17" y2="21" />
               </svg>
             </button>
-            )}
-            {/* BLE 按钮 */}
-            {bleAvailable && (
-              <button
-                onClick={handleConnect}
-                disabled={connecting}
-                className={`px-3 py-2 text-sm font-medium transition-colors flex-shrink-0 rounded-r-lg border border-border border-l-0
-                  ${isConnected
-                    ? "bg-success/20 text-success border-success/30"
-                    : "bg-accent/20 text-accent hover:bg-accent/30 border-accent/30"
-                  }`}
-              >
-                {connecting ? "···" : "BLE"}
-              </button>
             )}
           </div>
 
