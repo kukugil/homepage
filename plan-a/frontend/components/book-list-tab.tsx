@@ -180,6 +180,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pushing, setPushing] = useState(false)
   const [successMsg, setSuccessMsg] = useState("")
+  const [target, setTarget] = useState(1) // 1=flash, 0=TF卡
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -289,7 +290,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
     setPushing(true)
     const count = selectedIds.size
     try {
-      await selectBooks(deviceSN, Array.from(selectedIds))
+      await selectBooks(deviceSN, Array.from(selectedIds), target)
       // Update local state and clear selection
       setBooks(prev => prev.map(b => ({ ...b, selected: selectedIds.has(b.id) })))
       setSelectedIds(new Set())
@@ -307,7 +308,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
     if (!deviceSN) return
     setPushing(true)
     try {
-      await selectBooks(deviceSN, [])
+      await selectBooks(deviceSN, [], target)
       setSelectedIds(new Set())
       setBooks(prev => prev.map(b => ({ ...b, selected: false })))
     } catch (err: unknown) {
@@ -414,6 +415,29 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
           </svg>
           {pushing ? '推送中...' : `推送选中${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
         </button>
+        {/* 下载目标: Flash / TF卡 */}
+        <div className="flex items-center gap-1 bg-secondary rounded p-0.5">
+          <button
+            onClick={() => setTarget(1)}
+            className={`px-2.5 py-1 text-xs rounded transition-colors ${
+              target === 1
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Flash
+          </button>
+          <button
+            onClick={() => setTarget(0)}
+            className={`px-2.5 py-1 text-xs rounded transition-colors ${
+              target === 0
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            TF卡
+          </button>
+        </div>
         {selectedIds.size > 0 && (
           <button
             onClick={handleClearAllSelected}

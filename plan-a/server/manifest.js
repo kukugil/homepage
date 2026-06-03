@@ -9,7 +9,9 @@ function buildManifest(sn) {
 
 function buildQueue(sn) {
   const books = db.getSelectedBooksBySn(sn);
-  return formatBooks(sn, books);
+  const result = formatBooks(sn, books);
+  result.target = db.getDeviceTarget(sn);
+  return result;
 }
 
 function formatBooks(sn, books) {

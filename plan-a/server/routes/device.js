@@ -231,11 +231,13 @@ router.get('/devices/:sn/bundle',
   asyncHandler(async (req, res) => {
     const sn = req.validatedSN;
     const books = db.getSelectedBooksBySn(sn);
+    const target = db.getDeviceTarget(sn);
     const urls = books.map(b =>
       `/dl/${sn}/books/${encodeURIComponent(sanitizeTitle(b.title))}.${b.format}`
     );
     res.header('Content-Type', 'text/plain; charset=utf-8');
-    res.send(urls.join('\n') + (urls.length > 0 ? '\n' : ''));
+    // 第一行: target (1=flash, 0=TF卡), 后续行: 下载 URL
+    res.send(String(target) + '\n' + urls.join('\n') + (urls.length > 0 ? '\n' : ''));
   })
 );
 
@@ -290,10 +292,14 @@ router.put('/devices/:sn/books/select',
   express.json(),
   asyncHandler(async (req, res) => {
     const sn = req.validatedSN;
-    const { book_ids } = req.body || {};
+    const { book_ids, target } = req.body || {};
     db.selectBooks(sn, Array.isArray(book_ids) ? book_ids : []);
+    // target: 1=flash, 0=TF卡 (可选，不传则保持之前设置)
+    if (typeof target === 'number') {
+      db.setDeviceTarget(sn, target);
+    }
     await regenerateManifest(sn);
-    res.json({ ok: true, selected: book_ids ? book_ids.length : 0 });
+    res.json({ ok: true, selected: book_ids ? book_ids.length : 0, target: db.getDeviceTarget(sn) });
   })
 );
 

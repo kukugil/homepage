@@ -142,11 +142,13 @@ export async function reorderBooks(sn: string, bookIds: string[]): Promise<void>
   }
 }
 
-export async function selectBooks(sn: string, bookIds: string[]): Promise<{ ok: boolean; selected: number }> {
+export async function selectBooks(sn: string, bookIds: string[], target?: number): Promise<{ ok: boolean; selected: number; target: number }> {
+  const body: Record<string, unknown> = { book_ids: bookIds }
+  if (typeof target === 'number') body.target = target
   const resp = await fetch(`/api/v1/devices/${encodeURIComponent(sn)}/books/select`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ book_ids: bookIds }),
+    body: JSON.stringify(body),
   })
   if (!resp.ok) {
     const err = await resp.json().catch(() => ({ error: "Select failed" }))

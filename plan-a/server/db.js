@@ -37,6 +37,12 @@ function initSchema() {
   `);
   // Migration: add selected column to existing databases
   try { db.exec('ALTER TABLE books ADD COLUMN selected INTEGER DEFAULT 0'); } catch {}
+
+  // Device-level config
+  db.exec(`CREATE TABLE IF NOT EXISTS device_config (
+    sn TEXT PRIMARY KEY,
+    target INTEGER DEFAULT 1
+  )`);
 }
 
 function insertBook(book) {
@@ -107,8 +113,19 @@ function getSelectedBooksBySn(sn) {
   ).all(sn);
 }
 
+function setDeviceTarget(sn, target) {
+  getDb().prepare(
+    'INSERT INTO device_config (sn, target) VALUES (?, ?) ON CONFLICT(sn) DO UPDATE SET target = excluded.target'
+  ).run(sn, target ? 1 : 0);
+}
+
+function getDeviceTarget(sn) {
+  const row = getDb().prepare('SELECT target FROM device_config WHERE sn = ?').get(sn);
+  return row ? row.target : 1; // 默认 flash
+}
+
 function closeDb() {
   if (db) { db.close(); db = null; }
 }
 
-module.exports = { getDb, insertBook, getBooksBySn, getBook, deleteBook, updateSortOrder, updateMetadata, selectBooks, getSelectedBooksBySn, closeDb };
+module.exports = { getDb, insertBook, getBooksBySn, getBook, deleteBook, updateSortOrder, updateMetadata, selectBooks, getSelectedBooksBySn, setDeviceTarget, getDeviceTarget, closeDb };
