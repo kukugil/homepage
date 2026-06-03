@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { regenerateManifest, readManifest } = require('../manifest');
 const { validateSN, asyncHandler } = require('../middleware');
-const { bookPath, coverPath, fileExists, booksDir, sanitizeTitle } = require('../storage');
+const { resolveBookFilePath, coverPath, fileExists } = require('../storage');
 const fsp = require('fs/promises');
 const path = require('path');
 
@@ -57,7 +57,7 @@ router.get('/devices/:sn/books',
         metadata_version: b.metadata_version,
         selected: b.selected || 0,
         cover_url: `/dl/${sn}/covers/${b.book_id}.jpg`,
-        download_url: `/dl/${sn}/books/${encodeURIComponent(sanitizeTitle(b.title))}.${b.format}`,
+        download_url: `/dl/${sn}/books/${b.book_id}.${b.format}`,
         created_at: b.created_at,
       })),
     });
@@ -106,11 +106,9 @@ router.delete('/devices/:sn/books/:bookId',
       return res.status(404).json({ error: 'Book not found' });
     }
 
-    // Try new naming (title-based) first, fall back to old (bookId-based)
-    const newPath = await bookPath(sn, book.title, book.format);
-    const oldPath = path.join(booksDir(sn), `${bookId}.${book.format}`);
-    try { await fsp.unlink(newPath); } catch {}
-    try { if (await fileExists(oldPath)) await fsp.unlink(oldPath); } catch {}
+    // 用 resolveBookFilePath 找到实际文件并删除
+    const filePath = await resolveBookFilePath(sn, book);
+    try { await fsp.unlink(filePath); } catch {}
     try { await fsp.unlink(coverPath(sn, bookId)); } catch {}
 
     db.deleteBook(bookId);
@@ -233,7 +231,7 @@ router.get('/devices/:sn/bundle',
     const books = db.getSelectedBooksBySn(sn);
     const target = db.getDeviceTarget(sn);
     const urls = books.map(b =>
-      `/dl/${sn}/books/${encodeURIComponent(sanitizeTitle(b.title))}.${b.format}`
+      `/dl/${sn}/books/${b.book_id}.${b.format}`
     );
     res.header('Content-Type', 'text/plain; charset=utf-8');
     // 第一行: target (1=flash, 0=TF卡), 后续行: 下载 URL

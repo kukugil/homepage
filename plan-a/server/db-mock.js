@@ -24,8 +24,9 @@ function insertBook(data) {
     metadata_version: data.metadata_version || 1,
     sort_order: data.sort_order || 0,
     selected: data.selected || 0,
+    filename: data.filename || '',
     cover_url: `/dl/${data.sn}/covers/${id}.jpg`,
-    download_url: `/dl/${data.sn}/books/${encodeURIComponent(data.title || '')}.${data.format || 'txt'}`,
+    download_url: `/dl/${data.sn}/books/${id}.${data.format || 'txt'}`,
     created_at: new Date().toISOString(),
   });
 }

@@ -35,8 +35,9 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_books_sn ON books(sn);
     CREATE INDEX IF NOT EXISTS idx_books_sn_sort ON books(sn, sort_order);
   `);
-  // Migration: add selected column to existing databases
+  // Migration: add columns to existing databases
   try { db.exec('ALTER TABLE books ADD COLUMN selected INTEGER DEFAULT 0'); } catch {}
+  try { db.exec('ALTER TABLE books ADD COLUMN filename TEXT DEFAULT \'\''); } catch {}
 
   // Device-level config
   db.exec(`CREATE TABLE IF NOT EXISTS device_config (
@@ -47,14 +48,15 @@ function initSchema() {
 
 function insertBook(book) {
   const stmt = getDb().prepare(`
-    INSERT INTO books (book_id, sn, title, author, file_size, format, checksum, metadata_version, sort_order)
-    VALUES (@book_id, @sn, @title, @author, @file_size, @format, @checksum, @metadata_version, @sort_order)
+    INSERT INTO books (book_id, sn, title, author, file_size, format, checksum, metadata_version, sort_order, filename)
+    VALUES (@book_id, @sn, @title, @author, @file_size, @format, @checksum, @metadata_version, @sort_order, @filename)
     ON CONFLICT(book_id) DO UPDATE SET
       title = excluded.title,
       author = excluded.author,
       file_size = excluded.file_size,
       format = excluded.format,
       checksum = excluded.checksum,
+      filename = excluded.filename,
       metadata_version = metadata_version + 1,
       updated_at = datetime('now')
   `);

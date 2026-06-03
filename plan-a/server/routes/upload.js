@@ -4,7 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const CONFIG = require('../config');
 const db = require('../db');
-const { ensureDirs, bookPath, sha256File, sanitizeTitle } = require('../storage');
+const { ensureDirs, bookPath, sha256File } = require('../storage');
 const { regenerateManifest } = require('../manifest');
 const { extractCover } = require('../cover');
 const { validateSN, rateLimiter, asyncHandler } = require('../middleware');
@@ -113,10 +113,11 @@ router.post('/books/upload',
     const ext = path.extname(req.file.originalname).toLowerCase();
     const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
     const title = fixFilenameEncoding(path.basename(req.file.originalname, ext));
+    const filename = `${bookId}.${format}`;
     await ensureDirs(sn);
 
     const fsp = require('fs/promises');
-    const destPath = await bookPath(sn, title, format);
+    const destPath = bookPath(sn, bookId, format);
     await fsp.copyFile(req.file.path, destPath);
     await fsp.unlink(req.file.path).catch(() => {});
 
@@ -128,7 +129,7 @@ router.post('/books/upload',
 
     const sortOrder = db.getBooksBySn(sn).length;
     db.insertBook({
-      book_id: bookId, sn, title,
+      book_id: bookId, sn, title, filename,
       author: '', file_size: req.file.size, format,
       checksum, metadata_version: 1, sort_order: sortOrder,
     });
@@ -143,7 +144,7 @@ router.post('/books/upload',
       format,
       checksum: `sha256:${checksum}`,
       cover_url: `/dl/${sn}/covers/${bookId}.jpg`,
-      download_url: `/dl/${sn}/books/${encodeURIComponent(sanitizeTitle(title))}.${format}`,
+      download_url: `/dl/${sn}/books/${bookId}.${format}`,
     });
   })
 );
@@ -228,7 +229,8 @@ router.post('/books/batch-upload',
         const ext = path.extname(file.originalname).toLowerCase();
         const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
         const title = fixFilenameEncoding(path.basename(file.originalname, ext));
-        const destPath = await bookPath(sn, title, format);
+        const filename = `${bookId}.${format}`;
+        const destPath = bookPath(sn, bookId, format);
         await fsp.copyFile(file.path, destPath);
         await fsp.unlink(file.path).catch(() => {});
         const checksum = await sha256File(destPath);
@@ -239,7 +241,7 @@ router.post('/books/batch-upload',
 
         const sortOrder = db.getBooksBySn(sn).length;
         db.insertBook({
-          book_id: bookId, sn, title, author: '', file_size: file.size,
+          book_id: bookId, sn, title, filename, author: '', file_size: file.size,
           format, checksum, metadata_version: 1, sort_order: sortOrder,
         });
 

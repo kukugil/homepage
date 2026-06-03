@@ -1,6 +1,6 @@
 const fsp = require('fs/promises');
 const db = require('./db');
-const { manifestPath, atomicWrite, sanitizeTitle } = require('./storage');
+const { manifestPath, atomicWrite } = require('./storage');
 
 function buildManifest(sn) {
   const books = db.getBooksBySn(sn);
@@ -28,7 +28,7 @@ function formatBooks(sn, books) {
       checksum: b.checksum ? `sha256:${b.checksum}` : '',
       metadata_version: b.metadata_version || 1,
       cover_url: `/dl/${sn}/covers/${b.book_id}.jpg`,
-      download_url: `/dl/${sn}/books/${encodeURIComponent(sanitizeTitle(b.title))}.${b.format}`,
+      download_url: `/dl/${sn}/books/${b.book_id}.${b.format}`,
       added_at: b.created_at,
       sort_order: i,
     })),

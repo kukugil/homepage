@@ -25,17 +25,27 @@ function sanitizeTitle(title) {
     .slice(0, 100) || 'untitled'
 }
 
-async function bookPath(sn, title, format) {
-  const safe = sanitizeTitle(title)
+// 新文件命名：{bookId}.{format}，无碰撞
+function bookPath(sn, bookId, format) {
   const ext = format ? `.${format}` : ''
-  let name = `${safe}${ext}`
-  const dir = booksDir(sn)
-  let counter = 1
-  while (await fileExists(path.join(dir, name))) {
-    name = `${safe}_${counter}${ext}`
-    counter++
+  return path.join(booksDir(sn), `${bookId}${ext}`)
+}
+
+// 兼容旧文件：尝试找到实际存在的文件
+async function resolveBookFilePath(sn, book) {
+  // 优先：DB 中存储的实际文件名
+  if (book.filename) {
+    const p = path.join(booksDir(sn), book.filename)
+    if (await fileExists(p)) return p
   }
-  return path.join(dir, name)
+  // 新命名：{bookId}.{format}
+  const newPath = bookPath(sn, book.book_id, book.format)
+  if (await fileExists(newPath)) return newPath
+  // 旧命名：{sanitizedTitle}.{format}
+  const oldPath = path.join(booksDir(sn), `${sanitizeTitle(book.title)}.${book.format}`)
+  if (await fileExists(oldPath)) return oldPath
+  // 兜底：返回新路径（上传时用）
+  return newPath
 }
 
 function coverPath(sn, bookId) {
@@ -97,7 +107,7 @@ async function atomicWrite(filePath, content) {
 }
 
 module.exports = {
-  snDir, booksDir, coversDir, bookPath, coverPath, manifestPath, manifestTmpPath,
+  snDir, booksDir, coversDir, bookPath, resolveBookFilePath, coverPath, manifestPath, manifestTmpPath,
   ensureDirs, fileExists, getFileSize, sha256File, sanitizeSN, sanitizeFilename, sanitizeTitle,
   removeDir, atomicWrite,
 };

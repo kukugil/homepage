@@ -50,6 +50,33 @@ app.use('/dl', (req, res, next) => {
   },
 }));
 
+// Fallback: resolve book file for old naming or DB-stored filename
+const db = require('./db');
+const { resolveBookFilePath, fileExists } = require('./storage');
+
+app.use('/dl/:sn/books/:file', async (req, res, next) => {
+  // Only handle if static didn't find the file
+  if (res.headersSent) return;
+
+  try {
+    // Extract bookId from filename: "b_abc123.epub" → "b_abc123"
+    const bookId = req.params.file.replace(/\.[^.]+$/, '');
+    const book = db.getBook(bookId);
+    if (!book || book.sn !== req.params.sn) return next();
+
+    const fp = await resolveBookFilePath(req.params.sn, book);
+    if (await fileExists(fp)) {
+      const filename = path.basename(fp);
+      res.header('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+      res.sendFile(fp, { acceptRanges: true });
+    } else {
+      next();
+    }
+  } catch {
+    next();
+  }
+});
+
 /**
  * @openapi
  * /health:
