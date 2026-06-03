@@ -4,7 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const CONFIG = require('../config');
 const db = require('../db');
-const { ensureDirs, bookPath, sha256File } = require('../storage');
+const { ensureDirs, bookPath, sha256File, sanitizeTitle } = require('../storage');
 const { regenerateManifest } = require('../manifest');
 const { extractCover } = require('../cover');
 const { validateSN, rateLimiter, asyncHandler } = require('../middleware');
@@ -144,7 +144,7 @@ router.post('/books/upload',
       format,
       checksum: `sha256:${checksum}`,
       cover_url: `/dl/${sn}/covers/${bookId}.jpg`,
-      download_url: `/dl/${sn}/books/${bookId}.${format}`,
+      download_url: `/dl/${sn}/books/${bookId}/${encodeURIComponent(sanitizeTitle(title))}.${format}`,
     });
   })
 );

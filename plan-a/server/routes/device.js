@@ -2,7 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { regenerateManifest, readManifest } = require('../manifest');
 const { validateSN, asyncHandler } = require('../middleware');
-const { resolveBookFilePath, coverPath, fileExists } = require('../storage');
+const { resolveBookFilePath, coverPath, fileExists, sanitizeTitle } = require('../storage');
 const fsp = require('fs/promises');
 const path = require('path');
 
@@ -57,7 +57,7 @@ router.get('/devices/:sn/books',
         metadata_version: b.metadata_version,
         selected: b.selected || 0,
         cover_url: `/dl/${sn}/covers/${b.book_id}.jpg`,
-        download_url: `/dl/${sn}/books/${b.book_id}.${b.format}`,
+        download_url: `/dl/${sn}/books/${b.book_id}/${encodeURIComponent(sanitizeTitle(b.title))}.${b.format}`,
         created_at: b.created_at,
       })),
     });

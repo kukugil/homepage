@@ -54,6 +54,22 @@ app.use('/dl', (req, res, next) => {
 const db = require('./db');
 const { resolveBookFilePath, fileExists } = require('./storage');
 
+// New format: /dl/:sn/books/:bookId/书名.格式
+app.get('/dl/:sn/books/:bookId/:filename', async (req, res) => {
+  try {
+    const book = db.getBook(req.params.bookId);
+    if (!book || book.sn !== req.params.sn) return res.status(404).send('Not found');
+    const fp = await resolveBookFilePath(req.params.sn, book);
+    if (!await fileExists(fp)) return res.status(404).send('Not found');
+    res.header('Accept-Ranges', 'bytes');
+    res.header('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(req.params.filename)}`);
+    res.sendFile(fp, { acceptRanges: true });
+  } catch {
+    res.status(500).send('Server error');
+  }
+});
+
+// Old format fallback: /dl/:sn/books/:file (bookId.format or title.format)
 app.use('/dl/:sn/books/:file', async (req, res, next) => {
   // Only handle if static didn't find the file
   if (res.headersSent) return;
