@@ -349,75 +349,96 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       )}
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-        {/* 刷新 — 图标按钮 */}
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          title="刷新列表"
-          className="w-9 h-9 flex items-center justify-center bg-secondary text-foreground rounded hover:bg-secondary/70 transition-colors disabled:opacity-60 flex-shrink-0"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" className={`text-current ${refreshing ? 'animate-spin' : ''}`}>
-            <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
-            <rect x="9" y="3" width="2" height="2" fill="currentColor"/>
-            <rect x="11" y="5" width="2" height="2" fill="currentColor"/>
-            <rect x="13" y="7" width="2" height="2" fill="currentColor"/>
-            <rect x="11" y="9" width="2" height="2" fill="currentColor"/>
-            <rect x="9" y="11" width="2" height="2" fill="currentColor"/>
-            <rect x="7" y="13" width="2" height="2" fill="currentColor"/>
-            <rect x="5" y="11" width="2" height="2" fill="currentColor"/>
-            <rect x="3" y="9" width="2" height="2" fill="currentColor"/>
-            <rect x="1" y="7" width="2" height="2" fill="currentColor"/>
-            <rect x="3" y="5" width="2" height="2" fill="currentColor"/>
-            <rect x="5" y="3" width="2" height="2" fill="currentColor"/>
-          </svg>
-        </button>
-        {/* Push selected */}
-        <button
-          onClick={handlePushSelected}
-          disabled={selectedIds.size === 0 || pushing}
-          className={`flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-2 text-sm rounded flex items-center justify-center gap-1.5 sm:gap-2 transition-colors
-            ${selectedIds.size > 0
-              ? "bg-primary text-primary-foreground hover:bg-primary/80"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
-            }`}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" className="text-current sm:w-4 sm:h-4">
-            <polygon points="2,2 14,8 2,14" fill="currentColor"/>
-          </svg>
-          {pushing ? '推送中...' : `推送选中${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
-        </button>
-        {/* 下载目标: Flash / TF卡 */}
-        <div className="flex items-center gap-1 bg-secondary rounded p-0.5 flex-shrink-0">
+      <div className="space-y-2 sm:space-y-0">
+        {/* 桌面端一行，移动端推送按钮独占首行 */}
+        <div className="flex gap-2 sm:gap-3">
           <button
-            onClick={() => setTarget(1)}
-            className={`px-2.5 py-1 text-xs rounded transition-colors ${
-              target === 1
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            onClick={handlePushSelected}
+            disabled={selectedIds.size === 0 || pushing}
+            className={`flex-1 px-3 sm:px-4 py-2.5 sm:py-2 text-sm rounded flex items-center justify-center gap-1.5 sm:gap-2 transition-colors
+              ${selectedIds.size > 0
+                ? "bg-primary text-primary-foreground hover:bg-primary/80"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+              }`}
           >
-            Flash
+            <svg width="14" height="14" viewBox="0 0 16 16" className="text-current sm:w-4 sm:h-4">
+              <polygon points="2,2 14,8 2,14" fill="currentColor"/>
+            </svg>
+            {pushing ? '推送中...' : `推送选中${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
           </button>
-          <button
-            onClick={() => setTarget(0)}
-            className={`px-2.5 py-1 text-xs rounded transition-colors ${
-              target === 0
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            TF卡
-          </button>
+          {/* 桌面端：刷新、Flash/TF、取消全部 放在推送按钮旁边 */}
+          <div className="hidden sm:flex items-center gap-2">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="刷新列表"
+              className="w-9 h-9 flex items-center justify-center bg-secondary text-foreground rounded hover:bg-secondary/70 transition-colors disabled:opacity-60 flex-shrink-0"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" className={`text-current ${refreshing ? 'animate-spin' : ''}`}>
+                <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
+                <rect x="9" y="3" width="2" height="2" fill="currentColor"/>
+                <rect x="11" y="5" width="2" height="2" fill="currentColor"/>
+                <rect x="13" y="7" width="2" height="2" fill="currentColor"/>
+                <rect x="11" y="9" width="2" height="2" fill="currentColor"/>
+                <rect x="9" y="11" width="2" height="2" fill="currentColor"/>
+                <rect x="7" y="13" width="2" height="2" fill="currentColor"/>
+                <rect x="5" y="11" width="2" height="2" fill="currentColor"/>
+                <rect x="3" y="9" width="2" height="2" fill="currentColor"/>
+                <rect x="1" y="7" width="2" height="2" fill="currentColor"/>
+                <rect x="3" y="5" width="2" height="2" fill="currentColor"/>
+                <rect x="5" y="3" width="2" height="2" fill="currentColor"/>
+              </svg>
+            </button>
+            <div className="flex items-center gap-1 bg-secondary rounded p-0.5 flex-shrink-0">
+              <button onClick={() => setTarget(1)} className={`px-2.5 py-1 text-xs rounded transition-colors ${target === 1 ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>Flash</button>
+              <button onClick={() => setTarget(0)} className={`px-2.5 py-1 text-xs rounded transition-colors ${target === 0 ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>TF卡</button>
+            </div>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleClearAllSelected}
+                className="px-3 sm:px-4 py-2.5 sm:py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+              >
+                取消全部
+              </button>
+            )}
+          </div>
         </div>
-        {selectedIds.size > 0 && (
+        {/* 移动端：副操作第二行 */}
+        <div className="flex sm:hidden items-center gap-2">
           <button
-            onClick={handleClearAllSelected}
-            className="flex-1 sm:flex-none px-3 sm:px-4 py-2.5 sm:py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="刷新列表"
+            className="w-9 h-9 flex items-center justify-center bg-secondary text-foreground rounded hover:bg-secondary/70 transition-colors disabled:opacity-60 flex-shrink-0"
           >
-            取消全部
+            <svg width="16" height="16" viewBox="0 0 16 16" className={`text-current ${refreshing ? 'animate-spin' : ''}`}>
+              <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
+              <rect x="9" y="3" width="2" height="2" fill="currentColor"/>
+              <rect x="11" y="5" width="2" height="2" fill="currentColor"/>
+              <rect x="13" y="7" width="2" height="2" fill="currentColor"/>
+              <rect x="11" y="9" width="2" height="2" fill="currentColor"/>
+              <rect x="9" y="11" width="2" height="2" fill="currentColor"/>
+              <rect x="7" y="13" width="2" height="2" fill="currentColor"/>
+              <rect x="5" y="11" width="2" height="2" fill="currentColor"/>
+              <rect x="3" y="9" width="2" height="2" fill="currentColor"/>
+              <rect x="1" y="7" width="2" height="2" fill="currentColor"/>
+              <rect x="3" y="5" width="2" height="2" fill="currentColor"/>
+              <rect x="5" y="3" width="2" height="2" fill="currentColor"/>
+            </svg>
           </button>
-        )}
+          <div className="flex items-center gap-1 bg-secondary rounded p-0.5 flex-shrink-0">
+            <button onClick={() => setTarget(1)} className={`px-2.5 py-1 text-xs rounded transition-colors ${target === 1 ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>Flash</button>
+            <button onClick={() => setTarget(0)} className={`px-2.5 py-1 text-xs rounded transition-colors ${target === 0 ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>TF卡</button>
+          </div>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleClearAllSelected}
+              className="flex-1 px-3 py-2.5 text-sm rounded border border-border text-muted-foreground hover:text-foreground transition-colors text-center"
+            >
+              取消全部
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Books List */}

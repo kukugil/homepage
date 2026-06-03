@@ -19,7 +19,7 @@ function HomeContent() {
         <div className="flex gap-1 mb-6 sm:mb-8 border-b-2 border-border">
           <button
             onClick={() => setActiveTab("upload")}
-            className={`flex-1 sm:flex-none px-3 sm:px-6 py-2.5 text-sm sm:text-base font-medium tracking-wide transition-all
+            className={`flex-1 px-3 sm:px-6 py-2.5 text-sm sm:text-base font-medium tracking-wide transition-all
               ${activeTab === "upload"
                 ? "bg-primary text-primary-foreground pixel-button"
                 : "bg-secondary text-muted-foreground hover:text-foreground"
@@ -29,7 +29,7 @@ function HomeContent() {
           </button>
           <button
             onClick={() => setActiveTab("list")}
-            className={`flex-1 sm:flex-none px-3 sm:px-6 py-2.5 text-sm sm:text-base font-medium tracking-wide transition-all
+            className={`flex-1 px-3 sm:px-6 py-2.5 text-sm sm:text-base font-medium tracking-wide transition-all
               ${activeTab === "list"
                 ? "bg-primary text-primary-foreground pixel-button"
                 : "bg-secondary text-muted-foreground hover:text-foreground"

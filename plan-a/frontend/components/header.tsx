@@ -79,8 +79,30 @@ export function Header() {
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        {/* Title */}
+        {/* Title + Theme */}
         <div className="flex items-center gap-2 sm:gap-4">
+          {/* Theme Toggle */}
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center border border-border bg-card hover:bg-secondary/30 transition-colors flex-shrink-0"
+              aria-label="切换主题"
+            >
+              {theme === 'dark' ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-amber-400 sm:w-5 sm:h-5">
+                  <circle cx="8" cy="8" r="4" fill="currentColor"/>
+                  <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" strokeWidth="1.5"/>
+                  <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5"/>
+                  <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" strokeWidth="1.5"/>
+                  <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.5"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-muted-foreground sm:w-5 sm:h-5">
+                  <path d="M13.5 8.5A5.5 5.5 0 1 1 7.5 2.5a4 4 0 0 0 6 6z" fill="currentColor"/>
+                </svg>
+              )}
+            </button>
+          )}
           <div className="w-9 h-9 sm:w-11 sm:h-11 bg-card border border-border rounded flex items-center justify-center flex-shrink-0">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-primary sm:w-5 sm:h-5">
               <rect x="4" y="2" width="14" height="20" fill="currentColor" opacity="0.3"/>
@@ -102,7 +124,7 @@ export function Header() {
           </div>
         </div>
 
-        {/* Right side: Device Connection + Buttons + Theme */}
+        {/* Right side: Device Connection */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
           {/* SN Input with scan button */}
           <div className="flex items-stretch gap-0 w-full sm:w-auto">
@@ -150,28 +172,6 @@ export function Header() {
             )}
           </div>
 
-          {/* Theme Toggle */}
-          {mounted && (
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-secondary/30 transition-colors flex-shrink-0"
-              aria-label="切换主题"
-            >
-              {theme === 'dark' ? (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-amber-400">
-                  <circle cx="8" cy="8" r="4" fill="currentColor"/>
-                  <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" strokeWidth="1.5"/>
-                  <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5"/>
-                  <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" strokeWidth="1.5"/>
-                  <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.5"/>
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-muted-foreground">
-                  <path d="M13.5 8.5A5.5 5.5 0 1 1 7.5 2.5a4 4 0 0 0 6 6z" fill="currentColor"/>
-                </svg>
-              )}
-            </button>
-          )}
         </div>
       </div>
 
