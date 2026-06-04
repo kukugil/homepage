@@ -2,8 +2,12 @@ const path = require('path');
 
 const CONFIG = {
   PORT: process.env.PORT || 3000,
-  STORAGE_ROOT: path.resolve(__dirname, '..', 'storage'),
-  DL_DIR: path.resolve(__dirname, '..', 'storage', 'dl'),
+  STORAGE_ROOT: process.env.STORAGE_OVERRIDE
+    ? path.resolve(process.env.STORAGE_OVERRIDE)
+    : path.resolve(__dirname, '..', 'storage'),
+  DL_DIR: process.env.STORAGE_OVERRIDE
+    ? path.resolve(process.env.STORAGE_OVERRIDE, 'dl')
+    : path.resolve(__dirname, '..', 'storage', 'dl'),
   MAX_FILE_SIZE: 500 * 1024 * 1024,       // 500MB
   ALLOWED_MIMES: [
     'application/epub+zip',
