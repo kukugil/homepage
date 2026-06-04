@@ -34,6 +34,16 @@ export function SNProvider({ children }: { children: ReactNode }) {
 
   const isValidSN = useMemo(() => SN_REGEX.test(deviceSN), [deviceSN])
 
+  // 首次加载时从 URL 参数 ?sn=XXX 自动填入 SN
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const snFromUrl = params.get('sn')
+    if (snFromUrl && SN_REGEX.test(snFromUrl)) {
+      setDeviceSN(snFromUrl)
+    }
+  }, [])
+
   useEffect(() => {
     // Cancel any in-flight check
     if (abortRef.current) abortRef.current.abort()
