@@ -40,11 +40,12 @@ function formatBadge(format: string): string {
   return 'bg-secondary text-muted-foreground'
 }
 
-function SortableBook({ book, selected, onToggle, onDelete }: {
+function SortableBook({ book, selected, onToggle, onDelete, t }: {
   book: Book
   selected: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  t: (key: string, ...args: any[]) => string
 }) {
   const {
     attributes,
@@ -71,7 +72,6 @@ function SortableBook({ book, selected, onToggle, onDelete }: {
       `}
     >
       <div className="flex items-center gap-2 sm:gap-4">
-        {/* Checkbox */}
         <label className="flex-shrink-0 cursor-pointer p-1">
           <input
             type="checkbox"
@@ -81,7 +81,6 @@ function SortableBook({ book, selected, onToggle, onDelete }: {
           />
         </label>
 
-        {/* Drag Handle */}
         <button
           {...attributes}
           {...listeners}
@@ -101,7 +100,6 @@ function SortableBook({ book, selected, onToggle, onDelete }: {
           </svg>
         </button>
 
-        {/* Book Cover */}
         <div className="w-10 h-14 sm:w-12 sm:h-16 bg-secondary rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
           {book.coverUrl ? (
             <img
@@ -124,7 +122,6 @@ function SortableBook({ book, selected, onToggle, onDelete }: {
           </svg>
         </div>
 
-        {/* Book Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <h3 className="text-foreground text-sm sm:text-base font-medium truncate">{book.title}</h3>
@@ -137,7 +134,6 @@ function SortableBook({ book, selected, onToggle, onDelete }: {
           </p>
         </div>
 
-        {/* Delete button */}
         <button
           onClick={() => {
             if (window.confirm(t("deleteConfirm", book.title))) {
@@ -253,7 +249,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       setBooks((prev) => prev.filter((b) => b.id !== id))
       setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "删除失败")
+      setError(err instanceof Error ? err.message : t("deleteFailed"))
     }
   }
 
@@ -285,10 +281,10 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       setBooks(prev => prev.map(b => ({ ...b, selected: selectedIds.has(b.id) })))
       setSelectedIds(new Set())
       setError("")
-      setSuccessMsg(`已推送 ${count} 本书，MCU 访问 /api/v1/devices/${deviceSN}/queue 即可下载`)
+      setSuccessMsg(t("pushSuccess", count, deviceSN))
       setTimeout(() => setSuccessMsg(""), 5000)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "推送失败")
+      setError(err instanceof Error ? err.message : t("pushFailed"))
     } finally {
       setPushing(false)
     }
@@ -332,8 +328,8 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
         <p className={`text-sm sm:text-base
           ${deviceSN && !isValidSN ? "text-destructive" : "text-muted-foreground"}`}>
           {deviceSN && !isValidSN
-            ? "SN 格式无效。序列号须以字母或数字开头，仅包含字母、数字和连字符(-)"
-            : "请先输入设备 SN"
+            ? t("snInvalid")
+            : t("snRequired")
           }
         </p>
       </div>
@@ -348,7 +344,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
             <div key={i} className="w-3 h-3 bg-accent animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
           ))}
         </div>
-        <p className="text-muted-foreground text-sm sm:text-base">加载中...</p>
+        <p className="text-muted-foreground text-sm sm:text-base">{t("loading")}</p>
       </div>
     )
   }
@@ -438,6 +434,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
                   selected={selectedIds.has(book.id)}
                   onToggle={handleToggle}
                   onDelete={handleDelete}
+                  t={t}
                 />
               ))}
             </div>
@@ -451,14 +448,14 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
             <rect x="16" y="18" width="12" height="2" fill="currentColor"/>
             <rect x="16" y="24" width="16" height="2" fill="currentColor"/>
           </svg>
-          <p className="text-muted-foreground text-sm sm:text-base mb-1">暂无书籍</p>
-          <p className="text-muted-foreground text-xs mb-4">切换到「上传书籍」标签页开始添加</p>
+          <p className="text-muted-foreground text-sm sm:text-base mb-1">{t("noBooks")}</p>
+          <p className="text-muted-foreground text-xs mb-4">{t("goToUploadHint")}</p>
           {onGoUpload && (
             <button
               onClick={onGoUpload}
               className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded hover:bg-primary/90 transition-colors"
             >
-              前往上传
+              {t("goToUpload")}
             </button>
           )}
         </div>
@@ -466,10 +463,10 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
 
       {/* Stats */}
       <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground border-t border-secondary pt-2.5 sm:pt-4">
-        <span>共 {books.length} 本书籍</span>
+        <span>{t("totalBooks", books.length)}</span>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-accent" />
-          <span>拖拽可排序</span>
+          <span>{t("dragToSort")}</span>
         </div>
       </div>
     </div>
