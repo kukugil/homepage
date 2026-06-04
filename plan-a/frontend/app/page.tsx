@@ -5,10 +5,12 @@ import { Header } from "@/components/header"
 import { UploadTab } from "@/components/upload-tab"
 import { BookListTab } from "@/components/book-list-tab"
 import { SNProvider } from "@/hooks/sn-context"
+import { I18nProvider, useT } from "@/lib/i18n"
 
 function HomeContent() {
   const [activeTab, setActiveTab] = useState<"upload" | "list">("upload")
   const [refreshKey, setRefreshKey] = useState(0)
+  const t = useT()
 
   return (
     <main className="min-h-screen bg-background">
@@ -25,7 +27,7 @@ function HomeContent() {
                 : "bg-secondary text-muted-foreground hover:text-foreground"
               }`}
           >
-            上传书籍
+            {t("uploadTab")}
           </button>
           <button
             onClick={() => setActiveTab("list")}
@@ -35,7 +37,7 @@ function HomeContent() {
                 : "bg-secondary text-muted-foreground hover:text-foreground"
               }`}
           >
-            书籍列表
+            {t("bookListTab")}
           </button>
         </div>
 
@@ -55,7 +57,7 @@ function HomeContent() {
           </p>
           <p className="text-muted-foreground text-[10px] sm:text-xs mt-1">
             <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
-              陕ICP备2026013522号
+              {t("icp")}
             </a>
           </p>
         </footer>
@@ -66,8 +68,10 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <SNProvider>
-      <HomeContent />
-    </SNProvider>
+    <I18nProvider>
+      <SNProvider>
+        <HomeContent />
+      </SNProvider>
+    </I18nProvider>
   )
 }

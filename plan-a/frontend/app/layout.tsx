@@ -1,23 +1,31 @@
 import type { Metadata } from 'next'
-import { VT323, Press_Start_2P } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
+import { VT323, Press_Start_2P, Inter } from 'next/font/google'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 const vt323 = VT323({ 
   weight: '400',
   subsets: ["latin"],
-  variable: '--font-vt323'
+  variable: '--font-vt323',
+  display: 'swap',
 });
 
 const pressStart = Press_Start_2P({ 
   weight: '400',
   subsets: ["latin"],
-  variable: '--font-pixel'
+  variable: '--font-pixel',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: '电子阅读器书籍管理',
-  description: '像素风复古电子阅读器文件管理系统',
+  title: 'E-Reader Book Manager',
+  description: 'Retro pixel-art e-reader file management system',
 
 
   manifest: '/manifest.json',
@@ -51,16 +59,20 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="zh-CN" className={`${vt323.variable} ${pressStart.variable} bg-background`}>
+    <html lang="zh-CN" className={`${inter.variable} ${vt323.variable} ${pressStart.variable} bg-background`} suppressHydrationWarning>
       <body className="font-sans antialiased min-h-screen">
-        {children}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/sw.js').catch(() => {})
               }
+              const style = document.createElement('style')
+              style.textContent = '[id*="nextjs-dev-tools"], nextjs-dev-tools, nextjs-portal { display: none !important }'
+              document.head.appendChild(style)
             `,
           }}
         />

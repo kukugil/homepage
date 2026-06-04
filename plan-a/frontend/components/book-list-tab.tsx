@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useSN } from "@/hooks/sn-context"
+import { useT } from "@/lib/i18n"
 import { fetchBooks, deleteBook, reorderBooks, selectBooks, formatSize, type BookResponse } from "@/lib/api"
 
 interface Book {
@@ -139,14 +140,14 @@ function SortableBook({ book, selected, onToggle, onDelete }: {
         {/* Delete button */}
         <button
           onClick={() => {
-            if (window.confirm(`确定要删除「${book.title}」吗？此操作不可恢复。`)) {
+            if (window.confirm(t("deleteConfirm", book.title))) {
               onDelete(book.id)
             }
           }}
           className="flex-shrink-0 px-3 py-1.5 sm:px-3 sm:py-1.5 border border-destructive/40 text-destructive text-xs sm:text-sm rounded hover:bg-destructive/10 transition-colors"
         >
-          <span className="sm:hidden">删</span>
-          <span className="hidden sm:inline">删除</span>
+          <span className="sm:hidden">{t("deleteShort")}</span>
+          <span className="hidden sm:inline">{t("delete")}</span>
         </button>
       </div>
     </div>
@@ -156,8 +157,8 @@ function SortableBook({ book, selected, onToggle, onDelete }: {
 function mapBook(b: BookResponse): Book {
   return {
     id: b.book_id,
-    title: b.title || "未知书名",
-    author: b.author || "未知作者",
+    title: b.title || "Unknown Title",
+    author: b.author || "Unknown",
     type: (b.format || "").toUpperCase(),
     size: formatSize(b.file_size),
     coverUrl: b.cover_url || "",
@@ -172,6 +173,7 @@ interface BookListTabProps {
 
 export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const { deviceSN, isValidSN } = useSN()
+  const t = useT()
   const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -179,7 +181,6 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pushing, setPushing] = useState(false)
   const [successMsg, setSuccessMsg] = useState("")
-  const [target, setTarget] = useState(1) // 1=flash, 0=TF卡
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -202,7 +203,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       setSelectedIds(new Set(mapped.filter(b => b.selected).map(b => b.id)))
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return
-      setError(err instanceof Error ? err.message : "加载失败")
+      setError(err instanceof Error ? err.message : t("loadFailed"))
     } finally {
       setLoading(false)
     }
@@ -279,7 +280,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
     setPushing(true)
     const count = selectedIds.size
     try {
-      await selectBooks(deviceSN, Array.from(selectedIds), target)
+      await selectBooks(deviceSN, Array.from(selectedIds))
       // Update local state and clear selection
       setBooks(prev => prev.map(b => ({ ...b, selected: selectedIds.has(b.id) })))
       setSelectedIds(new Set())
@@ -297,14 +298,31 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
     if (!deviceSN) return
     setPushing(true)
     try {
-      await selectBooks(deviceSN, [], target)
+      await selectBooks(deviceSN, [])
       setSelectedIds(new Set())
       setBooks(prev => prev.map(b => ({ ...b, selected: false })))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "取消选择失败")
+      setError(err instanceof Error ? err.message : t("clearFailed"))
     } finally {
       setPushing(false)
     }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (!deviceSN || selectedIds.size === 0) return
+    if (!window.confirm(t("deleteConfirm", `${selectedIds.size} books`))) return
+    setError("")
+    let failed = 0
+    for (const id of selectedIds) {
+      try {
+        await deleteBook(deviceSN, id)
+      } catch {
+        failed++
+      }
+    }
+    setBooks(prev => prev.filter(b => !selectedIds.has(b.id)))
+    setSelectedIds(new Set())
+    if (failed) setError(`${failed} book(s) failed to delete`)
   }
 
   if (!isValidSN) {
@@ -348,97 +366,60 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="space-y-2 sm:space-y-0">
-        {/* 桌面端一行，移动端推送按钮独占首行 */}
-        <div className="flex gap-2 sm:gap-3">
-          <button
-            onClick={handlePushSelected}
-            disabled={selectedIds.size === 0 || pushing}
-            className={`flex-1 px-3 sm:px-4 py-2.5 sm:py-2 text-sm rounded flex items-center justify-center gap-1.5 sm:gap-2 transition-colors
-              ${selectedIds.size > 0
-                ? "bg-primary text-primary-foreground hover:bg-primary/80"
-                : "bg-muted text-muted-foreground cursor-not-allowed"
-              }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" className="text-current sm:w-4 sm:h-4">
-              <polygon points="2,2 14,8 2,14" fill="currentColor"/>
-            </svg>
-            {pushing ? '推送中...' : `推送选中${selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}`}
-          </button>
-          {/* 桌面端：刷新、Flash/TF、取消全部 放在推送按钮旁边 */}
-          <div className="hidden sm:flex items-center gap-2">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              title="刷新列表"
-              className="w-9 h-9 flex items-center justify-center bg-secondary text-foreground rounded hover:bg-secondary/70 transition-colors disabled:opacity-60 flex-shrink-0"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" className={`text-current ${refreshing ? 'animate-spin' : ''}`}>
-                <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
-                <rect x="9" y="3" width="2" height="2" fill="currentColor"/>
-                <rect x="11" y="5" width="2" height="2" fill="currentColor"/>
-                <rect x="13" y="7" width="2" height="2" fill="currentColor"/>
-                <rect x="11" y="9" width="2" height="2" fill="currentColor"/>
-                <rect x="9" y="11" width="2" height="2" fill="currentColor"/>
-                <rect x="7" y="13" width="2" height="2" fill="currentColor"/>
-                <rect x="5" y="11" width="2" height="2" fill="currentColor"/>
-                <rect x="3" y="9" width="2" height="2" fill="currentColor"/>
-                <rect x="1" y="7" width="2" height="2" fill="currentColor"/>
-                <rect x="3" y="5" width="2" height="2" fill="currentColor"/>
-                <rect x="5" y="3" width="2" height="2" fill="currentColor"/>
-              </svg>
-            </button>
-            <div className="flex items-center gap-1 bg-secondary rounded p-0.5 flex-shrink-0">
-              <button onClick={() => setTarget(1)} className={`px-2.5 py-1 text-xs rounded transition-colors ${target === 1 ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>Flash</button>
-              <button onClick={() => setTarget(0)} className={`px-2.5 py-1 text-xs rounded transition-colors ${target === 0 ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>TF卡</button>
-            </div>
-            {selectedIds.size > 0 && (
-              <button
-                onClick={handleClearAllSelected}
-                className="px-3 sm:px-4 py-2.5 sm:py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground transition-colors"
-              >
-                取消全部
-              </button>
-            )}
-          </div>
-        </div>
-        {/* 移动端：副操作第二行 */}
-        <div className="flex sm:hidden items-center gap-2">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title="刷新列表"
-            className="w-9 h-9 flex items-center justify-center bg-secondary text-foreground rounded hover:bg-secondary/70 transition-colors disabled:opacity-60 flex-shrink-0"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" className={`text-current ${refreshing ? 'animate-spin' : ''}`}>
-              <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
-              <rect x="9" y="3" width="2" height="2" fill="currentColor"/>
-              <rect x="11" y="5" width="2" height="2" fill="currentColor"/>
-              <rect x="13" y="7" width="2" height="2" fill="currentColor"/>
-              <rect x="11" y="9" width="2" height="2" fill="currentColor"/>
-              <rect x="9" y="11" width="2" height="2" fill="currentColor"/>
-              <rect x="7" y="13" width="2" height="2" fill="currentColor"/>
-              <rect x="5" y="11" width="2" height="2" fill="currentColor"/>
-              <rect x="3" y="9" width="2" height="2" fill="currentColor"/>
-              <rect x="1" y="7" width="2" height="2" fill="currentColor"/>
-              <rect x="3" y="5" width="2" height="2" fill="currentColor"/>
-              <rect x="5" y="3" width="2" height="2" fill="currentColor"/>
-            </svg>
-          </button>
-          <div className="flex items-center gap-1 bg-secondary rounded p-0.5 flex-shrink-0">
-            <button onClick={() => setTarget(1)} className={`px-2.5 py-1 text-xs rounded transition-colors ${target === 1 ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>Flash</button>
-            <button onClick={() => setTarget(0)} className={`px-2.5 py-1 text-xs rounded transition-colors ${target === 0 ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}>TF卡</button>
-          </div>
-          {selectedIds.size > 0 && (
+      {/* Action Buttons — pixel-grid rhythm: 2px gap, primary push gets flex-1 on mobile */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="h-9 px-2.5 flex items-center gap-1.5 bg-secondary text-foreground text-xs sm:text-sm rounded hover:bg-secondary/70 transition-colors disabled:opacity-60 flex-shrink-0"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" className={`text-current sm:w-4 sm:h-4 ${refreshing ? 'animate-spin' : ''}`}>
+            <rect x="7" y="1" width="2" height="2" fill="currentColor"/>
+            <rect x="9" y="3" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="5" width="2" height="2" fill="currentColor"/>
+            <rect x="13" y="7" width="2" height="2" fill="currentColor"/>
+            <rect x="11" y="9" width="2" height="2" fill="currentColor"/>
+            <rect x="9" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="7" y="13" width="2" height="2" fill="currentColor"/>
+            <rect x="5" y="11" width="2" height="2" fill="currentColor"/>
+            <rect x="3" y="9" width="2" height="2" fill="currentColor"/>
+            <rect x="1" y="7" width="2" height="2" fill="currentColor"/>
+            <rect x="3" y="5" width="2" height="2" fill="currentColor"/>
+            <rect x="5" y="3" width="2" height="2" fill="currentColor"/>
+          </svg>
+          <span className="hidden sm:inline">{t("refresh")}</span>
+        </button>
+        {/* Push — primary action, flex-1 on mobile for thumb-friendly tap target */}
+        <button
+          onClick={handlePushSelected}
+          disabled={selectedIds.size === 0 || pushing}
+          className={`h-9 px-3 sm:px-4 text-sm rounded flex items-center justify-center gap-1.5 sm:gap-2 transition-colors flex-shrink-0 flex-1 sm:flex-none
+            ${selectedIds.size > 0
+              ? "bg-primary text-primary-foreground hover:bg-primary/80"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+            }`}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" className="text-current sm:w-4 sm:h-4">
+            <polygon points="2,2 14,8 2,14" fill="currentColor"/>
+          </svg>
+          {pushing ? t("pushing") : t("pushSelected", selectedIds.size)}
+        </button>
+        {selectedIds.size > 0 && (
+          <>
             <button
               onClick={handleClearAllSelected}
-              className="flex-1 px-3 py-2.5 text-sm rounded border border-border text-muted-foreground hover:text-foreground transition-colors text-center"
+              className="h-9 px-3 text-sm rounded border border-border text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
             >
-              取消全部
+              {t("clearAll")}
             </button>
-          )}
-        </div>
+            <button
+              onClick={handleDeleteSelected}
+              className="h-9 px-3 text-sm rounded border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors flex-shrink-0"
+            >
+              {t("deleteShort")} ({selectedIds.size})
+            </button>
+          </>
+        )}
       </div>
 
       {/* Books List */}
