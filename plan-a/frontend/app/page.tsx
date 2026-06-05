@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Toaster } from "sonner"
 import { Header } from "@/components/header"
 import { UploadTab } from "@/components/upload-tab"
 import { BookListTab } from "@/components/book-list-tab"
@@ -21,6 +22,9 @@ function HomeContent() {
 
   return (
     <main className="min-h-screen bg-background">
+      <Toaster position="top-center" closeButton richColors={false} toastOptions={{
+        style: { background: 'var(--card)', color: 'var(--foreground)', border: '2px solid var(--border)' }
+      }} />
       <div className="w-full max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-8 scanlines">
         <Header />
 

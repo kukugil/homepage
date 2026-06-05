@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { useDropzone } from "react-dropzone"
+import { toast } from "sonner"
 import { useSN } from "@/hooks/sn-context"
 import { useT } from "@/lib/i18n"
 import { uploadBook, uploadBooks, formatSize } from "@/lib/api"
@@ -52,6 +53,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
                 : f
             )
           )
+          toast.success(t("uploadSuccess"))
           onUploadComplete?.()
         })
         .catch((err) => {
@@ -62,6 +64,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
                 : f
             )
           )
+          toast.error(err.message || t("uploadFailed"))
         })
     } else if (acceptedFiles.length > 1) {
       uploadBooks(deviceSN, acceptedFiles, (loaded, total) => {
@@ -70,7 +73,6 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
         .then((result) => {
           setUploadedFiles((prev) =>
             prev.map((f, i) => {
-              // 按顺序匹配，不用文件名 — 服务器 fixFilenameEncoding 会改变中文名
               const match = result.results[i]
               if (match) {
                 return {
@@ -84,6 +86,10 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
               return f
             })
           )
+          const ok = result.results.filter(r => r.status === "ok").length
+          const fail = result.results.filter(r => r.status === "error").length
+          if (fail === 0) toast.success(t("uploadSuccess"))
+          else toast.error(`${ok} ok, ${fail} failed`)
           onUploadComplete?.()
         })
         .catch((err) => {

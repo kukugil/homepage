@@ -18,6 +18,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { toast } from "sonner"
 import { useSN } from "@/hooks/sn-context"
 import { useT } from "@/lib/i18n"
 import { fetchBooks, deleteBook, reorderBooks, selectBooks, formatSize, type BookResponse } from "@/lib/api"
@@ -281,7 +282,8 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
       setBooks(prev => prev.map(b => ({ ...b, selected: selectedIds.has(b.id) })))
       setSelectedIds(new Set())
       setError("")
-      setSuccessMsg(t("pushSuccess", count, deviceSN))
+      setSuccessMsg("")
+      toast.success(t("pushSuccess", count), { duration: 5000 })
       setTimeout(() => setSuccessMsg(""), 5000)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t("pushFailed"))
