@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react"
 import { useDropzone } from "react-dropzone"
 import { useSN } from "@/hooks/sn-context"
+import { useT } from "@/lib/i18n"
 import { uploadBook, uploadBooks, formatSize } from "@/lib/api"
 
 interface UploadedFile {
@@ -20,6 +21,7 @@ interface UploadTabProps {
 
 export function UploadTab({ onUploadComplete }: UploadTabProps) {
   const { deviceSN, isValidSN } = useSN()
+  const t = useT()
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   const [totalProgress, setTotalProgress] = useState(0)
   const [totalSize, setTotalSize] = useState(0)
@@ -116,8 +118,8 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
             : "bg-secondary/30 border-secondary text-muted-foreground"
           }`}>
           {deviceSN && !isValidSN
-            ? "SN 格式无效。序列号须以字母或数字开头，仅包含字母、数字和连字符(-)，长度 1-64 位"
-            : "请先在顶部输入设备 SN 或通过 BLE 连接设备"
+            ? t("snInvalid")
+            : t("snRequired")
           }
         </div>
       )}
@@ -156,10 +158,10 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
         </div>
 
         <p className="text-sm sm:text-xl text-primary mb-1 sm:mb-2 tracking-wide">
-          {isDragActive ? "松开以上传文件" : "拖拽文件到此处，或点击选择"}
+          {isDragActive ? t("dropToUpload") : t("dragOrClickUpload")}
         </p>
         <p className="text-muted-foreground text-xs sm:text-sm tracking-wider">
-          支持 EPUB / PDF / TXT，单文件最大 500MB
+          {t("supportedFormats")}
         </p>
 
         {/* Decorative corners */}
@@ -173,7 +175,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
       {uploadedFiles.some(f => f.status === "uploading") && totalSize > 0 && (
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
-            <span>上传进度</span>
+            <span>{t("uploadProgress")}</span>
             <span>{totalProgress}% ({formatSize(totalSize)})</span>
           </div>
           <div className="w-full h-2.5 bg-secondary rounded overflow-hidden">
@@ -238,7 +240,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
                 </span>
               </div>
               <span className="text-xs text-muted-foreground flex-shrink-0 hidden sm:inline">
-                {file.status === "success" ? "上传成功" : file.status === "error" ? `失败` : "上传中..."}
+                {file.status === "success" ? t("uploadSuccess") : file.status === "error" ? t("uploadFailed") : t("uploading")}
               </span>
             </div>
           ))}

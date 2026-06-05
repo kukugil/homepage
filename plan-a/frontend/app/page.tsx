@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
 import { UploadTab } from "@/components/upload-tab"
 import { BookListTab } from "@/components/book-list-tab"
@@ -10,7 +10,14 @@ import { I18nProvider, useT } from "@/lib/i18n"
 function HomeContent() {
   const [activeTab, setActiveTab] = useState<"upload" | "list">("upload")
   const [refreshKey, setRefreshKey] = useState(0)
+  const [isIntl, setIsIntl] = useState(false)
   const t = useT()
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const h = window.location.hostname
+    setIsIntl(h === "43.135.183.44" || h.startsWith("us."))
+  }, [])
 
   return (
     <main className="min-h-screen bg-background">
@@ -55,11 +62,13 @@ function HomeContent() {
           <p className="text-muted-foreground text-xs sm:text-sm">
             PIXEL READER v1.0
           </p>
+          {!isIntl && (
           <p className="text-muted-foreground text-[10px] sm:text-xs mt-1">
             <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
               {t("icp")}
             </a>
           </p>
+          )}
         </footer>
       </div>
     </main>

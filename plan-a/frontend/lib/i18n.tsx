@@ -41,7 +41,7 @@ const translations: Record<string, Record<Lang, string>> = {
   uploadFailed: { zh: "失败", en: "Failed" },
   uploading: { zh: "上传中...", en: "Uploading..." },
   snInvalid: { zh: "SN 格式无效。序列号须以字母或数字开头，仅包含字母、数字和连字符(-)，长度 1-64 位", en: "Invalid SN format. Must start with letter/digit, only letters, digits & hyphens, 1-64 chars." },
-  snRequired: { zh: "请先在顶部输入设备 SN 或通过 BLE 连接设备", en: "Enter device SN above or connect via BLE" },
+  snRequired: { zh: "请先在顶部输入设备 SN", en: "Please enter a device SN above" },
   loading: { zh: "加载中...", en: "Loading..." },
   noBooks: { zh: "暂无书籍", en: "No books yet" },
   goToUploadHint: { zh: "切换到「上传书籍」标签页开始添加", en: "Switch to Upload tab to add books" },
