@@ -212,11 +212,32 @@
   100% { background-position: 12px 0; }
 }
 
-/* Fix sonner toast positioning — Tailwind preflight may interfere */
+/* Fix sonner toast positioning */
 [data-sonner-toaster] {
   position: fixed !important;
   top: 50% !important;
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
   z-index: 9999 !important;
+}
+
+/* Pixel toast animation — stepped reveal */
+.pixel-toast[data-sonner-toast] {
+  animation: toast-pixel-in 0.3s steps(4) forwards;
+}
+@keyframes toast-pixel-in {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Pixel toast: success accent */
+[data-sonner-toast][data-type="success"] {
+  border-color: var(--success) !important;
+  box-shadow: 4px 4px 0px var(--success) !important;
+}
+
+/* Pixel toast: error accent */
+[data-sonner-toast][data-type="error"] {
+  border-color: var(--destructive) !important;
+  box-shadow: 4px 4px 0px var(--destructive) !important;
 }
