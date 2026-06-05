@@ -21,6 +21,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { toast } from "sonner"
 import { useSN } from "@/hooks/sn-context"
 import { useT } from "@/lib/i18n"
+import { ConfirmDialog } from "./confirm-dialog"
 import { fetchBooks, deleteBook, reorderBooks, selectBooks, formatSize, type BookResponse } from "@/lib/api"
 
 interface Book {
@@ -41,11 +42,12 @@ function formatBadge(format: string): string {
   return 'bg-secondary text-muted-foreground'
 }
 
-function SortableBook({ book, selected, onToggle, onDelete, t }: {
+function SortableBook({ book, selected, onToggle, onDelete, onShowConfirm, t }: {
   book: Book
   selected: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
+  onShowConfirm: (msg: string, onOk: () => void) => void
   t: (key: string, ...args: any[]) => string
 }) {
   const {
@@ -137,9 +139,7 @@ function SortableBook({ book, selected, onToggle, onDelete, t }: {
 
         <button
           onClick={() => {
-            if (window.confirm(t("deleteConfirm", book.title))) {
-              onDelete(book.id)
-            }
+            onShowConfirm(t("deleteConfirm", book.title), () => onDelete(book.id))
           }}
           className="flex-shrink-0 px-3 py-1.5 sm:px-3 sm:py-1.5 border border-destructive/40 text-destructive text-xs sm:text-sm rounded hover:bg-destructive/10 transition-colors"
         >
@@ -178,6 +178,11 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [pushing, setPushing] = useState(false)
   const [successMsg, setSuccessMsg] = useState("")
+  const [confirm, setConfirm] = useState<{ message: string; onOk: () => void } | null>(null)
+
+  const showConfirm = useCallback((message: string, onOk: () => void) => {
+    setConfirm({ message, onOk })
+  }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -308,19 +313,17 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
 
   const handleDeleteSelected = async () => {
     if (!deviceSN || selectedIds.size === 0) return
-    if (!window.confirm(t("deleteConfirm", `${selectedIds.size} books`))) return
-    setError("")
-    let failed = 0
-    for (const id of selectedIds) {
-      try {
-        await deleteBook(deviceSN, id)
-      } catch {
-        failed++
+    showConfirm(t("deleteConfirm", `${selectedIds.size} books`), async () => {
+      setConfirm(null)
+      setError("")
+      let failed = 0
+      for (const id of selectedIds) {
+        try { await deleteBook(deviceSN, id) } catch { failed++ }
       }
-    }
-    setBooks(prev => prev.filter(b => !selectedIds.has(b.id)))
-    setSelectedIds(new Set())
-    if (failed) setError(`${failed} book(s) failed to delete`)
+      setBooks(prev => prev.filter(b => !selectedIds.has(b.id)))
+      setSelectedIds(new Set())
+      if (failed) setError(`${failed} book(s) failed to delete`)
+    })
   }
 
   if (!isValidSN) {
@@ -436,6 +439,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
                   selected={selectedIds.has(book.id)}
                   onToggle={handleToggle}
                   onDelete={handleDelete}
+                  onShowConfirm={showConfirm}
                   t={t}
                 />
               ))}
@@ -471,6 +475,14 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
           <span>{t("dragToSort")}</span>
         </div>
       </div>
+
+      {confirm && (
+        <ConfirmDialog
+          message={confirm.message}
+          onConfirm={confirm.onOk}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
     </div>
   )
 }
