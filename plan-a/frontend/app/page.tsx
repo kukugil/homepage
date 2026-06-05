@@ -23,7 +23,6 @@ function HomeContent() {
   return (
     <>
       <Toaster position="center" closeButton gap={8} toastOptions={{
-        className: 'pixel-toast',
         style: {
           background: 'var(--card)',
           color: 'var(--foreground)',
@@ -31,7 +30,7 @@ function HomeContent() {
           borderRadius: 0,
           fontFamily: 'var(--font-vt323)',
           fontSize: '1rem',
-          padding: '12px 16px',
+          padding: '12px 20px',
           boxShadow: '4px 4px 0px var(--accent)',
         },
         duration: 4000,

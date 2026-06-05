@@ -221,23 +221,10 @@
   z-index: 9999 !important;
 }
 
-/* Pixel toast animation — stepped reveal */
-.pixel-toast[data-sonner-toast] {
-  animation: toast-pixel-in 0.3s steps(4) forwards;
+/* Pixel toast: prevent sonner hover flicker */
+[data-sonner-toast] {
+  transition: none !important;
 }
-@keyframes toast-pixel-in {
-  0% { opacity: 0; transform: scale(0.8); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-/* Pixel toast: success accent */
-[data-sonner-toast][data-type="success"] {
-  border-color: var(--success) !important;
-  box-shadow: 4px 4px 0px var(--success) !important;
-}
-
-/* Pixel toast: error accent */
-[data-sonner-toast][data-type="error"] {
-  border-color: var(--destructive) !important;
-  box-shadow: 4px 4px 0px var(--destructive) !important;
+[data-sonner-toast]:hover {
+  transform: none !important;
 }
