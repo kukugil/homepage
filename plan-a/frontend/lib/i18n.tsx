@@ -110,13 +110,17 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const urlLang = params.get("lang")
     if (urlLang === "en") { setLangRaw("en"); return }
     if (urlLang === "zh") { setLangRaw("zh"); return }
-    // 2. Saved preference
+    // 2. Host-based default: international IP → English
+    const host = window.location.hostname
+    const isIntl = host === "43.135.183.44" || host.startsWith("us.")
+    // 3. Saved preference
     try {
       const saved = localStorage.getItem("ereader-lang")
       if (saved === "zh" || saved === "en") { setLangRaw(saved); return }
     } catch {}
-    // 3. Browser language — zh* → Chinese, everything else → English
-    if (navigator.language.startsWith("zh")) { setLangRaw("zh"); return }
+    // 4. Browser language — zh* → Chinese, everything else → English
+    //    But international IP defaults to English regardless
+    if (!isIntl && navigator.language.startsWith("zh")) { setLangRaw("zh"); return }
     setLangRaw("en")
   }, [])
 
