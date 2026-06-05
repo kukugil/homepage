@@ -6,8 +6,9 @@ const server = app.listen(port, '0.0.0.0', () => {
   console.log('E-Reader server running on http://0.0.0.0:' + port);
   console.log('Storage:', CONFIG.DL_DIR);
 });
-server.keepAliveTimeout = 120000;
-server.headersTimeout = 120000;
+server.keepAliveTimeout = 600000;
+server.headersTimeout = 610000;
+server.timeout = 600000; // 10 min — slow mobile uploads
 
 function gracefulShutdown(signal) {
   console.log('Received ' + signal + ', shutting down...');

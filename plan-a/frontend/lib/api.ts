@@ -31,16 +31,23 @@ export interface BatchUploadResult {
   fail_count: number
 }
 
-export function uploadBook(
-  sn: string,
-  file: File,
-  onProgress?: (loaded: number, total: number) => void
-): Promise<UploadResult> {
-  return new Promise((resolve, reject) => {
-    const formData = new FormData()
-    formData.append("sn", sn)
-    formData.append("file", file)
+const CHUNK_UPLOAD_THRESHOLD = 20 * 1024 * 1024
+const CHUNK_SIZE = 5 * 1024 * 1024
+const CHUNK_RETRIES = 3
 
+function createUploadId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID().replace(/-/g, "")
+  }
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`
+}
+
+function postFormData<T>(
+  url: string,
+  formData: FormData,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<T> {
+  return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable && onProgress) {
@@ -49,7 +56,8 @@ export function uploadBook(
     })
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText))
+        try { resolve(JSON.parse(xhr.responseText)) }
+        catch { reject(new Error("Invalid server response")) }
       } else {
         try { reject(new Error(JSON.parse(xhr.responseText).error)) }
         catch { reject(new Error(`Upload failed (${xhr.status})`)) }
@@ -57,9 +65,74 @@ export function uploadBook(
     })
     xhr.addEventListener("error", () => reject(new Error("Network error")))
     xhr.addEventListener("abort", () => reject(new Error("Upload cancelled")))
-    xhr.open("POST", "/api/v1/books/upload")
+    xhr.open("POST", url)
     xhr.send(formData)
   })
+}
+
+async function uploadChunkWithRetry<T>(
+  formData: FormData,
+  onProgress: (loaded: number, total: number) => void
+): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= CHUNK_RETRIES; attempt += 1) {
+    try {
+      return await postFormData<T>("/api/v1/books/chunk-upload", formData, onProgress)
+    } catch (err) {
+      lastError = err
+      if (attempt === CHUNK_RETRIES) break
+      await new Promise((resolve) => setTimeout(resolve, attempt * 800))
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Chunk upload failed")
+}
+
+async function uploadBookInChunks(
+  sn: string,
+  file: File,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<UploadResult> {
+  const uploadId = createUploadId()
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+    const start = chunkIndex * CHUNK_SIZE
+    const end = Math.min(start + CHUNK_SIZE, file.size)
+    const chunk = file.slice(start, end)
+    const formData = new FormData()
+    formData.append("sn", sn)
+    formData.append("uploadId", uploadId)
+    formData.append("filename", file.name)
+    formData.append("chunkIndex", String(chunkIndex))
+    formData.append("totalChunks", String(totalChunks))
+    formData.append("totalSize", String(file.size))
+    formData.append("chunk", chunk, file.name)
+
+    const result = await uploadChunkWithRetry<UploadResult & { complete?: boolean }>(
+      formData,
+      (loaded) => onProgress?.(start + loaded, file.size)
+    )
+
+    onProgress?.(end, file.size)
+    if (result.complete) return result
+  }
+
+  throw new Error("Upload did not complete")
+}
+
+export function uploadBook(
+  sn: string,
+  file: File,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<UploadResult> {
+  if (file.size >= CHUNK_UPLOAD_THRESHOLD) {
+    return uploadBookInChunks(sn, file, onProgress)
+  }
+
+  const formData = new FormData()
+  formData.append("sn", sn)
+  formData.append("file", file)
+  return postFormData<UploadResult>("/api/v1/books/upload", formData, onProgress)
 }
 
 export function uploadBooks(
@@ -67,28 +140,35 @@ export function uploadBooks(
   files: File[],
   onProgress?: (loaded: number, total: number) => void
 ): Promise<BatchUploadResult> {
-  return new Promise((resolve, reject) => {
-    const formData = new FormData()
-    formData.append("sn", sn)
-    files.forEach((f) => formData.append("files", f))
+  return new Promise(async (resolve) => {
+    const total = files.reduce((sum, f) => sum + f.size, 0)
+    let completedBytes = 0
+    const results: BatchUploadResult["results"] = []
 
-    const xhr = new XMLHttpRequest()
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable && onProgress) {
-        onProgress(e.loaded, e.total)
+    for (const file of files) {
+      try {
+        const uploaded = await uploadBook(sn, file, (loaded) => {
+          onProgress?.(completedBytes + loaded, total)
+        })
+        completedBytes += file.size
+        onProgress?.(completedBytes, total)
+        results.push({ filename: file.name, status: "ok", book_id: uploaded.book_id })
+      } catch (err) {
+        completedBytes += file.size
+        onProgress?.(completedBytes, total)
+        results.push({
+          filename: file.name,
+          status: "error",
+          reason: err instanceof Error ? err.message : "Upload failed",
+        })
       }
+    }
+
+    resolve({
+      results,
+      success_count: results.filter((r) => r.status === "ok").length,
+      fail_count: results.filter((r) => r.status === "error").length,
     })
-    xhr.addEventListener("load", () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText))
-      } else {
-        try { reject(new Error(JSON.parse(xhr.responseText).error)) }
-        catch { reject(new Error(`Upload failed (${xhr.status})`)) }
-      }
-    })
-    xhr.addEventListener("error", () => reject(new Error("Network error")))
-    xhr.open("POST", "/api/v1/books/batch-upload")
-    xhr.send(formData)
   })
 }
 

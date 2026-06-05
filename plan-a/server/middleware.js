@@ -12,7 +12,7 @@ function validateSN(req, res, next) {
   }
 }
 
-function rateLimiter() {
+function rateLimiter(max = CONFIG.RATE_LIMIT_MAX) {
   const hits = new Map();
   return (req, res, next) => {
     const key = req.ip || 'unknown';
@@ -20,7 +20,7 @@ function rateLimiter() {
     const windowStart = now - CONFIG.RATE_LIMIT_WINDOW_MS;
     const record = hits.get(key) || [];
     const recent = record.filter(t => t > windowStart);
-    if (recent.length >= CONFIG.RATE_LIMIT_MAX) {
+    if (recent.length >= max) {
       return res.status(429).json({ error: 'Too many requests. Try again later.' });
     }
     recent.push(now);

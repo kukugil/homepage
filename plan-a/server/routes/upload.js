@@ -22,6 +22,7 @@ function fixFilenameEncoding(str) {
 }
 
 const uploadDir = path.join(CONFIG.STORAGE_ROOT, 'tmp');
+const chunkDir = path.join(uploadDir, 'chunks');
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -44,6 +45,117 @@ const upload = multer({
     }
   },
 });
+
+function validateUploadId(uploadId) {
+  if (!uploadId || !/^[a-zA-Z0-9_-]{8,80}$/.test(uploadId)) {
+    throw new Error('Invalid uploadId');
+  }
+  return uploadId;
+}
+
+function validateChunkMeta(body) {
+  const uploadId = validateUploadId(body.uploadId);
+  const filename = body.filename || '';
+  const chunkIndex = Number(body.chunkIndex);
+  const totalChunks = Number(body.totalChunks);
+  const totalSize = Number(body.totalSize);
+
+  if (!filename || !path.extname(filename)) throw new Error('Missing filename');
+  if (!Number.isInteger(chunkIndex) || chunkIndex < 0) throw new Error('Invalid chunkIndex');
+  if (!Number.isInteger(totalChunks) || totalChunks < 1 || totalChunks > 10000) throw new Error('Invalid totalChunks');
+  if (chunkIndex >= totalChunks) throw new Error('chunkIndex out of range');
+  if (!Number.isInteger(totalSize) || totalSize < 1 || totalSize > CONFIG.MAX_FILE_SIZE) throw new Error('Invalid totalSize');
+
+  const ext = path.extname(filename).toLowerCase();
+  if (!CONFIG.ALLOWED_EXTENSIONS.includes(ext)) {
+    throw new Error(`Unsupported file type: ${ext}. Allowed: ${CONFIG.ALLOWED_EXTENSIONS.join(', ')}`);
+  }
+
+  return { uploadId, filename, chunkIndex, totalChunks, totalSize };
+}
+
+async function registerBookFromFile({ sn, sourcePath, originalName, fileSize }) {
+  const bookId = `b_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
+  const ext = path.extname(originalName).toLowerCase();
+  const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
+  const title = fixFilenameEncoding(path.basename(originalName, ext));
+  const filename = `${bookId}.${format}`;
+  await ensureDirs(sn);
+
+  const fsp = require('fs/promises');
+  const destPath = bookPath(sn, bookId, format);
+  await fsp.copyFile(sourcePath, destPath);
+  await fsp.unlink(sourcePath).catch(() => {});
+
+  const checksum = await sha256File(destPath);
+
+  extractCover(destPath, sn, bookId, format, title).catch(err =>
+    console.error(`Cover extraction error for ${bookId}: ${err.message}`)
+  );
+
+  const sortOrder = db.getBooksBySn(sn).length;
+  db.insertBook({
+    book_id: bookId, sn, title, filename,
+    author: '', file_size: fileSize, format,
+    checksum, metadata_version: 1, sort_order: sortOrder,
+  });
+
+  await regenerateManifest(sn);
+
+  return {
+    book_id: bookId,
+    title,
+    author: '',
+    file_size: fileSize,
+    format,
+    checksum: `sha256:${checksum}`,
+    cover_url: `/dl/${sn}/covers/${bookId}.jpg`,
+    download_url: `/dl/${sn}/books/${bookId}/${encodeURIComponent(sanitizeTitle(title))}.${format}`,
+  };
+}
+
+async function mergeChunks({ uploadId, filename, totalChunks, totalSize }) {
+  const fs = require('fs');
+  const fsp = require('fs/promises');
+  const dir = path.join(chunkDir, uploadId);
+  const mergedPath = path.join(uploadDir, `${uploadId}${path.extname(filename).toLowerCase()}`);
+
+  for (let i = 0; i < totalChunks; i++) {
+    const p = path.join(dir, `${i}.part`);
+    await fsp.access(p);
+  }
+
+  await new Promise((resolve, reject) => {
+    const out = fs.createWriteStream(mergedPath);
+    out.on('error', reject);
+    out.on('finish', resolve);
+
+    let i = 0;
+    const appendNext = () => {
+      if (i >= totalChunks) {
+        out.end();
+        return;
+      }
+      const input = fs.createReadStream(path.join(dir, `${i}.part`));
+      input.on('error', reject);
+      input.on('end', () => {
+        i += 1;
+        appendNext();
+      });
+      input.pipe(out, { end: false });
+    };
+    appendNext();
+  });
+
+  const stat = await fsp.stat(mergedPath);
+  if (stat.size !== totalSize) {
+    await fsp.unlink(mergedPath).catch(() => {});
+    throw new Error('Merged file size mismatch');
+  }
+
+  await fsp.rm(dir, { recursive: true, force: true });
+  return mergedPath;
+}
 
 /**
  * @openapi
@@ -109,43 +221,60 @@ router.post('/books/upload',
   asyncHandler(async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
     const sn = req.validatedSN;
-    const bookId = `b_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
-    const ext = path.extname(req.file.originalname).toLowerCase();
-    const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
-    const title = fixFilenameEncoding(path.basename(req.file.originalname, ext));
-    const filename = `${bookId}.${format}`;
-    await ensureDirs(sn);
+    const result = await registerBookFromFile({
+      sn,
+      sourcePath: req.file.path,
+      originalName: req.file.originalname,
+      fileSize: req.file.size,
+    });
+    res.json(result);
+  })
+);
+
+router.post('/books/chunk-upload',
+  rateLimiter(CONFIG.RATE_LIMIT_MAX * 10),
+  upload.single('chunk'),
+  validateSN,
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No chunk provided' });
 
     const fsp = require('fs/promises');
-    const destPath = bookPath(sn, bookId, format);
-    await fsp.copyFile(req.file.path, destPath);
-    await fsp.unlink(req.file.path).catch(() => {});
+    let meta;
+    try {
+      meta = validateChunkMeta(req.body);
+    } catch (err) {
+      await fsp.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: err.message });
+    }
 
-    const checksum = await sha256File(destPath);
+    const dir = path.join(chunkDir, meta.uploadId);
+    const chunkPath = path.join(dir, `${meta.chunkIndex}.part`);
+    await fsp.mkdir(dir, { recursive: true });
+    await fsp.unlink(chunkPath).catch(() => {});
+    await fsp.rename(req.file.path, chunkPath);
 
-    extractCover(destPath, sn, bookId, format, title).catch(err =>
-      console.error(`Cover extraction error for ${bookId}: ${err.message}`)
-    );
+    if (meta.chunkIndex !== meta.totalChunks - 1) {
+      return res.json({
+        complete: false,
+        received: meta.chunkIndex + 1,
+        total_chunks: meta.totalChunks,
+      });
+    }
 
-    const sortOrder = db.getBooksBySn(sn).length;
-    db.insertBook({
-      book_id: bookId, sn, title, filename,
-      author: '', file_size: req.file.size, format,
-      checksum, metadata_version: 1, sort_order: sortOrder,
-    });
-
-    await regenerateManifest(sn);
-
-    res.json({
-      book_id: bookId,
-      title,
-      author: '',
-      file_size: req.file.size,
-      format,
-      checksum: `sha256:${checksum}`,
-      cover_url: `/dl/${sn}/covers/${bookId}.jpg`,
-      download_url: `/dl/${sn}/books/${bookId}/${encodeURIComponent(sanitizeTitle(title))}.${format}`,
-    });
+    let mergedPath;
+    try {
+      mergedPath = await mergeChunks(meta);
+      const result = await registerBookFromFile({
+        sn: req.validatedSN,
+        sourcePath: mergedPath,
+        originalName: meta.filename,
+        fileSize: meta.totalSize,
+      });
+      return res.json({ complete: true, ...result });
+    } catch (err) {
+      if (mergedPath) await fsp.unlink(mergedPath).catch(() => {});
+      return res.status(400).json({ error: err.message });
+    }
   })
 );
 

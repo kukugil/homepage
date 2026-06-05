@@ -88,6 +88,55 @@ describe('POST /api/v1/books/upload', () => {
 // ═══════════════════════════════════════════════════════════════
 // 3. POST /api/v1/books/batch-upload
 // ═══════════════════════════════════════════════════════════════
+describe('POST /api/v1/books/chunk-upload', () => {
+  it('200 - uploads chunks and registers the merged book', async () => {
+    const content = Buffer.from('chunk A\nchunk B\nchunk C');
+    const uploadId = `testchunk${Date.now()}`;
+    const chunks = [
+      content.subarray(0, 8),
+      content.subarray(8, 16),
+      content.subarray(16),
+    ];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const res = await supertest(app)
+        .post('/api/v1/books/chunk-upload')
+        .field('sn', VALID_SN)
+        .field('uploadId', uploadId)
+        .field('filename', 'chunked-book.txt')
+        .field('chunkIndex', String(i))
+        .field('totalChunks', String(chunks.length))
+        .field('totalSize', String(content.length))
+        .attach('chunk', chunks[i], 'chunked-book.txt')
+        .expect(200);
+
+      if (i < chunks.length - 1) {
+        expect(res.body.complete).toBe(false);
+      } else {
+        expect(res.body.complete).toBe(true);
+        expect(res.body.title).toBe('chunked-book');
+        expect(res.body.format).toBe('txt');
+        expect(res.body.file_size).toBe(content.length);
+      }
+    }
+  });
+
+  it('400 - rejects invalid chunk metadata', async () => {
+    const res = await supertest(app)
+      .post('/api/v1/books/chunk-upload')
+      .field('sn', VALID_SN)
+      .field('uploadId', 'bad')
+      .field('filename', 'bad.txt')
+      .field('chunkIndex', '0')
+      .field('totalChunks', '1')
+      .field('totalSize', '3')
+      .attach('chunk', Buffer.from('bad'), 'bad.txt')
+      .expect(400);
+
+    expect(res.body.error).toMatch(/uploadId/i);
+  });
+});
+
 describe('POST /api/v1/books/batch-upload', () => {
   it('200 — batch upload 2 files', async () => {
     const res = await supertest(app)
