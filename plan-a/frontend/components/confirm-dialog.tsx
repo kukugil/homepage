@@ -11,7 +11,7 @@ interface ConfirmDialogProps {
 export function ConfirmDialog({ message, onConfirm, onCancel, confirmLabel = "DELETE", cancelLabel = "CANCEL" }: ConfirmDialogProps) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card border-2 border-accent w-full max-w-xs" style={{ boxShadow: '6px 6px 0px var(--accent)' }}>
+      <div className="bg-card border-2 border-accent w-full max-w-xs" style={{ boxShadow: '3px 3px 0px var(--accent)' }}>
 
         {/* Pixel header */}
         <div className="flex items-center gap-1 px-3 py-2 border-b-2 border-border bg-secondary/30">
