@@ -62,6 +62,7 @@ const translations: Record<string, Record<Lang, string>> = {
   pushing: { zh: "推送中...", en: "Pushing..." },
   pushSelected: { zh: (n: number) => `推送选中${n > 0 ? ` (${n})` : ""}`, en: (n: number) => `Push Selected${n > 0 ? ` (${n})` : ""}` },
   clearAll: { zh: "取消全部", en: "Clear All" },
+  cancel: { zh: "取消", en: "Cancel" },
   pushSuccess: { zh: (count: number) => `已推送 ${count} 本书，请在阅读器上进行同步。`, en: (count: number) => `Pushed ${count} books. Please sync on your reader.` },
   pushFailed: { zh: "推送失败", en: "Push failed" },
   clearFailed: { zh: "取消选择失败", en: "Clear selection failed" },

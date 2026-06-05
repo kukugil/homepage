@@ -481,6 +481,8 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
           message={confirm.message}
           onConfirm={confirm.onOk}
           onCancel={() => setConfirm(null)}
+          confirmLabel={t("delete") as string}
+          cancelLabel={t("cancel") as string}
         />
       )}
     </div>
