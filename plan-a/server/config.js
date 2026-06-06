@@ -15,7 +15,7 @@ const CONFIG = {
     'application/pdf',
     'text/plain',
   ],
-  ALLOWED_EXTENSIONS: ['.epub', '.pdf', '.txt'],
+  ALLOWED_EXTENSIONS: ['.epub', '.pdf', '.txt', '.bin', '.fw'],
   COVER_WIDTH: 300,
   COVER_HEIGHT: 400,
   COVER_QUALITY: 70,

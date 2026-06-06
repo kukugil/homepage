@@ -25,6 +25,7 @@ function formatBooks(sn, books) {
       author: b.author || 'Unknown',
       file_size: b.file_size,
       format: b.format,
+      type: b.format === 'bin' || b.format === 'fw' ? 'firmware' : 'book',
       checksum: b.checksum ? `sha256:${b.checksum}` : '',
       metadata_version: b.metadata_version || 1,
       cover_url: `/dl/${sn}/covers/${b.book_id}.jpg`,

@@ -23,6 +23,7 @@ function fixFilenameEncoding(str) {
 
 const uploadDir = path.join(CONFIG.STORAGE_ROOT, 'tmp');
 const chunkDir = path.join(uploadDir, 'chunks');
+const completedChunkDir = path.join(uploadDir, 'completed-chunks');
 
 const upload = multer({
   storage: multer.diskStorage({
@@ -77,7 +78,7 @@ function validateChunkMeta(body) {
 async function registerBookFromFile({ sn, sourcePath, originalName, fileSize }) {
   const bookId = `b_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
   const ext = path.extname(originalName).toLowerCase();
-  const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
+  const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : ext === '.bin' ? 'bin' : ext === '.fw' ? 'fw' : 'txt';
   const title = fixFilenameEncoding(path.basename(originalName, ext));
   const filename = `${bookId}.${format}`;
   await ensureDirs(sn);
@@ -157,6 +158,22 @@ async function mergeChunks({ uploadId, filename, totalChunks, totalSize }) {
   return mergedPath;
 }
 
+async function readCompletedChunkUpload(uploadId) {
+  const fsp = require('fs/promises');
+  const completedPath = path.join(completedChunkDir, `${uploadId}.json`);
+  const raw = await fsp.readFile(completedPath, 'utf8').catch(() => null);
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function writeCompletedChunkUpload(uploadId, result) {
+  const fsp = require('fs/promises');
+  await fsp.mkdir(completedChunkDir, { recursive: true });
+  await fsp.writeFile(
+    path.join(completedChunkDir, `${uploadId}.json`),
+    JSON.stringify({ complete: true, ...result, completed_at: new Date().toISOString() })
+  );
+}
+
 /**
  * @openapi
  * /api/v1/books/upload:
@@ -232,7 +249,6 @@ router.post('/books/upload',
 );
 
 router.post('/books/chunk-upload',
-  rateLimiter(CONFIG.RATE_LIMIT_MAX * 10),
   upload.single('chunk'),
   validateSN,
   asyncHandler(async (req, res) => {
@@ -245,6 +261,12 @@ router.post('/books/chunk-upload',
     } catch (err) {
       await fsp.unlink(req.file.path).catch(() => {});
       return res.status(400).json({ error: err.message });
+    }
+
+    const completed = await readCompletedChunkUpload(meta.uploadId);
+    if (completed) {
+      await fsp.unlink(req.file.path).catch(() => {});
+      return res.json(completed);
     }
 
     const dir = path.join(chunkDir, meta.uploadId);
@@ -270,6 +292,7 @@ router.post('/books/chunk-upload',
         originalName: meta.filename,
         fileSize: meta.totalSize,
       });
+      await writeCompletedChunkUpload(meta.uploadId, result);
       return res.json({ complete: true, ...result });
     } catch (err) {
       if (mergedPath) await fsp.unlink(mergedPath).catch(() => {});
@@ -356,7 +379,7 @@ router.post('/books/batch-upload',
       try {
         const bookId = `b_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
         const ext = path.extname(file.originalname).toLowerCase();
-        const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : 'txt';
+        const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : ext === '.bin' ? 'bin' : ext === '.fw' ? 'fw' : 'txt';
         const title = fixFilenameEncoding(path.basename(file.originalname, ext));
         const filename = `${bookId}.${format}`;
         const destPath = bookPath(sn, bookId, format);

@@ -83,6 +83,17 @@ describe('POST /api/v1/books/upload', () => {
 
     expect(res.body.error).toMatch(/SN/i);
   });
+
+  it('200 — upload .bin firmware file', async () => {
+    const res = await supertest(app)
+      .post('/api/v1/books/upload')
+      .field('sn', VALID_SN)
+      .attach('file', Buffer.from('firmware binary data'), 'v2.1.bin')
+      .expect(200);
+
+    expect(res.body.format).toBe('bin');
+    expect(res.body.title).toBe('v2.1');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -443,6 +454,19 @@ describe('GET /api/v1/devices/:sn/queue', () => {
       .get(`/api/v1/devices/${VALID_SN}/books`);
 
     expect(res.body.books.length).toBeLessThanOrEqual(allBooks.body.books.length);
+  });
+
+  it('200 — firmware items have type:\"firmware\"', async () => {
+    const res = await supertest(app)
+      .get(`/api/v1/devices/${VALID_SN}/queue`);
+
+    for (const b of res.body.books) {
+      if (b.format === 'bin' || b.format === 'fw') {
+        expect(b.type).toBe('firmware');
+      } else {
+        expect(b.type).toBe('book');
+      }
+    }
   });
 
   it('400 — invalid SN format', async () => {
