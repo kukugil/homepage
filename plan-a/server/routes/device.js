@@ -47,7 +47,7 @@ router.get('/devices/:sn/books',
     const books = db.getBooksBySn(sn);
     res.json({
       sn,
-      books: books.map(b => ({
+      files: books.map(b => ({
         book_id: b.book_id,
         title: b.title,
         author: b.author,

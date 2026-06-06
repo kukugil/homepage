@@ -31,9 +31,10 @@ export interface BatchUploadResult {
   fail_count: number
 }
 
-const CHUNK_UPLOAD_THRESHOLD = 20 * 1024 * 1024
-const CHUNK_SIZE = 5 * 1024 * 1024
-const CHUNK_RETRIES = 3
+const CHUNK_UPLOAD_THRESHOLD = 512 * 1024
+const CHUNK_SIZE = 2 * 1024 * 1024
+const CHUNK_RETRIES = 2
+const MAX_CONCURRENT_CHUNKS = 3
 
 function createUploadId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -80,6 +81,7 @@ async function uploadChunkWithRetry<T>(
       return await postFormData<T>("/api/v1/books/chunk-upload", formData, onProgress)
     } catch (err) {
       lastError = err
+      console.error(`chunk upload attempt ${attempt}/${CHUNK_RETRIES} failed:`, err)
       if (attempt === CHUNK_RETRIES) break
       await new Promise((resolve) => setTimeout(resolve, attempt * 800))
     }
@@ -94,8 +96,12 @@ async function uploadBookInChunks(
 ): Promise<UploadResult> {
   const uploadId = createUploadId()
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+  console.log(`chunked upload start: ${file.name} (${(file.size/1048576).toFixed(1)}MB) → ${totalChunks} chunks of ${CHUNK_SIZE/1024}KB`)
 
-  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+  let completed = 0
+  const bytesDone = new Array(totalChunks).fill(0)
+
+  async function sendChunk(chunkIndex: number): Promise<UploadResult & { complete?: boolean }> {
     const start = chunkIndex * CHUNK_SIZE
     const end = Math.min(start + CHUNK_SIZE, file.size)
     const chunk = file.slice(start, end)
@@ -110,11 +116,26 @@ async function uploadBookInChunks(
 
     const result = await uploadChunkWithRetry<UploadResult & { complete?: boolean }>(
       formData,
-      (loaded) => onProgress?.(start + loaded, file.size)
+      (loaded) => {
+        bytesDone[chunkIndex] = loaded
+        const total = bytesDone.reduce((a, b) => a + b, 0)
+        onProgress?.(total, file.size)
+      }
     )
+    completed++
+    return result
+  }
 
-    onProgress?.(end, file.size)
-    if (result.complete) return result
+  // Send chunks in parallel batches of MAX_CONCURRENT_CHUNKS
+  for (let i = 0; i < totalChunks; i += MAX_CONCURRENT_CHUNKS) {
+    const batch = []
+    for (let j = i; j < Math.min(i + MAX_CONCURRENT_CHUNKS, totalChunks); j++) {
+      batch.push(sendChunk(j))
+    }
+    const results = await Promise.all(batch)
+    for (const r of results) {
+      if (r.complete) return r
+    }
   }
 
   throw new Error("Upload did not complete")
@@ -181,7 +202,7 @@ export async function fetchBooks(sn: string, signal?: AbortSignal): Promise<Book
     throw new Error(err.error)
   }
   const data = await resp.json()
-  return data.books || []
+  return data.files || []
 }
 
 export async function deleteBook(sn: string, bookId: string): Promise<void> {

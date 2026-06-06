@@ -196,10 +196,10 @@ describe('GET /api/v1/devices/:sn/books', () => {
       .expect(200);
 
     expect(res.body.sn).toBe(VALID_SN);
-    expect(Array.isArray(res.body.books)).toBe(true);
-    expect(res.body.books.length).toBeGreaterThanOrEqual(3);
+    expect(Array.isArray(res.body.files)).toBe(true);
+    expect(res.body.files.length).toBeGreaterThanOrEqual(3);
 
-    const found = res.body.books.find(b => b.book_id === uploadedBookId);
+    const found = res.body.files.find(b => b.book_id === uploadedBookId);
     expect(found).toBeDefined();
     expect(found.title).toBe('test-book');
     expect(found.format).toBe('txt');
@@ -253,7 +253,7 @@ describe('PUT /api/v1/devices/:sn/books/reorder', () => {
       .get(`/api/v1/devices/${VALID_SN}/books`)
       .expect(200);
 
-    const ids = list.body.books.map(b => b.book_id);
+    const ids = list.body.files.map(b => b.book_id);
     const reversed = [...ids].reverse();
 
     const res = await supertest(app)
@@ -265,7 +265,7 @@ describe('PUT /api/v1/devices/:sn/books/reorder', () => {
 
     const list2 = await supertest(app)
       .get(`/api/v1/devices/${VALID_SN}/books`);
-    expect(list2.body.books.map(b => b.book_id)).toEqual(reversed);
+    expect(list2.body.files.map(b => b.book_id)).toEqual(reversed);
   });
 
   it('400 — book_ids not an array', async () => {
@@ -306,7 +306,7 @@ describe('GET /api/v1/devices/:sn/manifest', () => {
       .expect(200);
 
     expect(res.body).toHaveProperty('books');
-    expect(Array.isArray(res.body.books)).toBe(true);
+    expect(Array.isArray(res.body.files)).toBe(true);
   });
 
   it('404 — manifest not found for unknown SN', async () => {
@@ -333,7 +333,7 @@ describe('PUT /api/v1/devices/:sn/books/select', () => {
   it('200 — select books for push', async () => {
     const list = await supertest(app)
       .get(`/api/v1/devices/${VALID_SN}/books`);
-    const ids = list.body.books.map(b => b.book_id);
+    const ids = list.body.files.map(b => b.book_id);
 
     const res = await supertest(app)
       .put(`/api/v1/devices/${VALID_SN}/books/select`)
@@ -381,7 +381,7 @@ describe('GET /api/v1/devices/:sn/bundle', () => {
     // Ensure some books are selected
     const list = await supertest(app)
       .get(`/api/v1/devices/${VALID_SN}/books`);
-    const ids = list.body.books.map(b => b.book_id);
+    const ids = list.body.files.map(b => b.book_id);
     await supertest(app)
       .put(`/api/v1/devices/${VALID_SN}/books/select`)
       .send({ book_ids: ids, target: 1 });
@@ -429,7 +429,7 @@ describe('GET /api/v1/devices/:sn/queue', () => {
   beforeAll(async () => {
     const list = await supertest(app)
       .get(`/api/v1/devices/${VALID_SN}/books`);
-    const ids = list.body.books.map(b => b.book_id);
+    const ids = list.body.files.map(b => b.book_id);
     await supertest(app)
       .put(`/api/v1/devices/${VALID_SN}/books/select`)
       .send({ book_ids: ids, target: 1 });
@@ -443,7 +443,7 @@ describe('GET /api/v1/devices/:sn/queue', () => {
     expect(res.body.sn).toBe(VALID_SN);
     expect(res.body).toHaveProperty('target');
     expect(res.body).toHaveProperty('books');
-    expect(Array.isArray(res.body.books)).toBe(true);
+    expect(Array.isArray(res.body.files)).toBe(true);
   });
 
   it('200 — only returns selected books', async () => {
@@ -453,14 +453,14 @@ describe('GET /api/v1/devices/:sn/queue', () => {
     const allBooks = await supertest(app)
       .get(`/api/v1/devices/${VALID_SN}/books`);
 
-    expect(res.body.books.length).toBeLessThanOrEqual(allBooks.body.books.length);
+    expect(res.body.files.length).toBeLessThanOrEqual(allBooks.body.files.length);
   });
 
   it('200 — firmware items have type:\"firmware\"', async () => {
     const res = await supertest(app)
       .get(`/api/v1/devices/${VALID_SN}/queue`);
 
-    for (const b of res.body.books) {
+    for (const b of res.body.files) {
       if (b.format === 'bin' || b.format === 'fw') {
         expect(b.type).toBe('firmware');
       } else {
