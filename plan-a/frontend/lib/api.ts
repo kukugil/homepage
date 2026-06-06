@@ -202,7 +202,7 @@ export async function fetchBooks(sn: string, signal?: AbortSignal): Promise<Book
     throw new Error(err.error)
   }
   const data = await resp.json()
-  return data.files || []
+  return data.books || []
 }
 
 export async function deleteBook(sn: string, bookId: string): Promise<void> {

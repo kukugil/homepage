@@ -19,7 +19,7 @@ function formatBooks(sn, books) {
     sn,
     version: Date.now(),
     updated_at: new Date().toISOString(),
-    files: books.map((b, i) => ({
+    books: books.map((b, i) => ({
       book_id: b.book_id,
       title: b.title || 'Unknown',
       author: b.author || 'Unknown',

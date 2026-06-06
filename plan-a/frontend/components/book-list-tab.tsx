@@ -182,7 +182,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const [confirm, setConfirm] = useState<{ message: string; onOk: () => void } | null>(null)
 
   const showConfirm = useCallback((message: string, onOk: () => void) => {
-    setConfirm({ message, onOk })
+    setConfirm({ message, onOk: () => { onOk(); setConfirm(null) } })
   }, [])
 
   const sensors = useSensors(
@@ -315,7 +315,6 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const handleDeleteSelected = async () => {
     if (!deviceSN || selectedIds.size === 0) return
     showConfirm(t("deleteConfirm", `${selectedIds.size} books`), async () => {
-      setConfirm(null)
       setError("")
       let failed = 0
       for (const id of selectedIds) {
