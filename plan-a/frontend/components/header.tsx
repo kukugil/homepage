@@ -71,22 +71,15 @@ export function Header({ onHelpClick }: HeaderProps) {
               )}
             </button>
           )}
-          {/* 帮助按钮 */}
-          {onHelpClick && (
-            <button
-              onClick={onHelpClick}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center border border-border
-                bg-card hover:bg-secondary/40 active:bg-secondary/60
-                transition-colors flex-shrink-0 touch-manipulation font-pixel"
-              style={{ fontSize: '1.1rem' }}
-              aria-label={t("help")}
-              title={t("help")}
-            >
-              ?
-            </button>
-          )}
-          {/* LOGO 图标 */}
-          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-card border border-border flex items-center justify-center flex-shrink-0">
+          {/* LOGO 图标 — 使用说明入口 */}
+          <button
+            onClick={onHelpClick}
+            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center border border-border
+              bg-card hover:bg-secondary/40 active:bg-secondary/60
+              transition-colors flex-shrink-0 touch-manipulation"
+            aria-label={t("help")}
+            title={t("help")}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-primary">
               <rect x="4" y="2" width="14" height="20" fill="currentColor" opacity="0.3"/>
               <rect x="4" y="2" width="2" height="20" fill="currentColor"/>
@@ -96,7 +89,7 @@ export function Header({ onHelpClick }: HeaderProps) {
               <rect x="8" y="6" width="6" height="2" fill="currentColor"/>
               <rect x="8" y="10" width="4" height="2" fill="currentColor"/>
             </svg>
-          </div>
+          </button>
           {/* 标题文字 */}
           <div className="min-w-0">
             <h1 className="text-base sm:text-xl font-semibold text-primary leading-tight tracking-tight truncate">
