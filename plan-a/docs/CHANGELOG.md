@@ -18,6 +18,9 @@
 - **上传同名文件**：book_id 唯一，不会相互覆盖
 - **批量上传中文名卡住**：前端匹配从文件名改为数组下标
 - **删除书籍同步清理 selectedIds**：推送计数正确更新
+- **移除死依赖 ereader-book-transfer**：清理 package.json 中未使用的 file:.. 依赖 (2026-06-08)
+- **清理 Demo UI 区块**：移除 page.tsx 中泄漏到生产的 UI PREVIEW 测试按钮 (2026-06-08)
+- **新增 .claude/launch.json**：preview 服务器启动配置 (2026-06-08)
 - **旧文件下载兼容**：/dl fallback handler 兼容旧命名格式
 
 ### 移除
