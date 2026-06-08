@@ -5,6 +5,7 @@ import { Toaster } from "sonner"
 import { Header } from "@/components/header"
 import { UploadTab } from "@/components/upload-tab"
 import { BookListTab } from "@/components/book-list-tab"
+import { GuideModal } from "@/components/guide-modal"
 import { SNProvider } from "@/hooks/sn-context"
 import { I18nProvider, useT } from "@/lib/i18n"
 
@@ -12,6 +13,7 @@ function HomeContent() {
   const [activeTab, setActiveTab] = useState<"upload" | "list">("upload")
   const [refreshKey, setRefreshKey] = useState(0)
   const [isIntl, setIsIntl] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
   const t = useT()
 
   useEffect(() => {
@@ -52,7 +54,7 @@ function HomeContent() {
       />
     <main className="min-h-screen bg-background">
       <div className="w-full max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-8 scanlines">
-        <Header />
+        <Header onHelpClick={() => setShowGuide(true)} />
 
         {/* Tab Navigation — 移动端更大触摸目标 */}
         <div className="flex gap-0 mb-4 sm:mb-8 border-b-2 border-border">
@@ -104,6 +106,8 @@ function HomeContent() {
         </footer>
       </div>
     </main>
+
+    {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
     </>
   )
 }

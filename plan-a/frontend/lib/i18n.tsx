@@ -16,6 +16,7 @@ const translations: Record<string, Record<Lang, string>> = {
   scanQrTitle: { zh: "扫描 SN 二维码", en: "Scan SN QR Code" },
   scanQrBtn: { zh: "扫描 SN 二维码", en: "Scan QR code" },
   switchTheme: { zh: "切换主题", en: "Toggle theme" },
+  help: { zh: "使用帮助", en: "Help" },
   closeQr: { zh: "关闭", en: "Close" },
   startingCamera: { zh: "正在启动摄像头...", en: "Starting camera..." },
   qrHint: { zh: "将 SN 二维码对准取景框 · 支持 QR Code 和条形码", en: "Align QR code in viewfinder · QR Code & barcodes supported" },
