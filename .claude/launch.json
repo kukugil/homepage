@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "plan-a-frontend",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev"],
+      "port": 3000,
+      "autoPort": true,
+      "cwd": "${workspaceFolder}/plan-a/frontend"
+    },
+    {
+      "name": "plan-a-backend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server/index.js"],
+      "port": 3001,
+      "cwd": "${workspaceFolder}/plan-a"
+    }
+  ]
+}
