@@ -21,6 +21,7 @@
 - **移除死依赖 ereader-book-transfer**：清理 package.json 中未使用的 file:.. 依赖 (2026-06-08)
 - **清理 Demo UI 区块**：移除 page.tsx 中泄漏到生产的 UI PREVIEW 测试按钮 (2026-06-08)
 - **新增 .claude/launch.json**：preview 服务器启动配置 (2026-06-08)
+- **新增使用指南 USER-GUIDE.md**：面向用户的无线传书分步教程，覆盖蓝牙配对→扫码→上传→推送→同步全流程 + FAQ (2026-06-08)
 - **旧文件下载兼容**：/dl fallback handler 兼容旧命名格式
 
 ### 移除
