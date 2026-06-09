@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect } from "react"
+
 interface ConfirmDialogProps {
   message: string
   onConfirm: () => void
@@ -8,44 +10,108 @@ interface ConfirmDialogProps {
   cancelLabel?: string
 }
 
-export function ConfirmDialog({ message, onConfirm, onCancel, confirmLabel = "DELETE", cancelLabel = "CANCEL" }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  message,
+  onConfirm,
+  onCancel,
+  confirmLabel,
+  cancelLabel,
+}: ConfirmDialogProps) {
+  // Lock body scroll when dialog is open
+  useEffect(() => {
+    const original = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = original
+    }
+  }, [])
+
+  // Handle Escape key
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onCancel()
+      }
+    }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [onCancel])
+
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-card border-2 border-accent w-full max-w-xs" style={{ boxShadow: '3px 3px 0px var(--accent)' }}>
-
-        {/* Pixel header */}
-        <div className="flex items-center gap-1 px-3 py-2 border-b-2 border-border bg-secondary/30">
-          <div className="flex gap-1">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="w-2 h-2"
-                style={{ background: i === 1 ? 'var(--accent)' : 'var(--accent)', opacity: i === 1 ? 1 : 0.4 }}
-              />
-            ))}
-          </div>
-          <span className="text-[10px] text-muted-foreground font-pixel ml-2 tracking-widest">WARNING</span>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.40)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="pixel-confirm-dialog"
+        style={{
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: 0,
+          boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+          maxWidth: 320,
+          width: "100%",
+          animation: "pixel-confirm-in 0.2s ease-out both",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
+          <h3
+            className="font-pixel"
+            style={{
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+              letterSpacing: "0.08em",
+              lineHeight: 1,
+              margin: 0,
+            }}
+          >
+            确认删除
+          </h3>
         </div>
 
-        {/* Message */}
-        <div className="px-5 py-6 text-center">
-          <p className="text-sm text-foreground leading-relaxed">{message}</p>
+        {/* Body */}
+        <div style={{ padding: "20px 16px" }}>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--foreground)",
+              lineHeight: 1.6,
+              margin: 0,
+              fontFamily: "system-ui, -apple-system, sans-serif",
+            }}
+          >
+            {message}
+          </p>
         </div>
 
-        {/* Pixel buttons */}
-        <div className="flex border-t-2 border-border text-xs tracking-wider">
+        {/* Footer */}
+        <div
+          style={{
+            display: "flex",
+            borderTop: "1px solid var(--border)",
+          }}
+        >
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-3 bg-secondary text-foreground border-r-2 border-border"
+            className="pixel-confirm-btn pixel-confirm-btn-cancel"
           >
-            {cancelLabel}
+            {cancelLabel || "取消"}
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-3 bg-destructive text-destructive-foreground"
+            className="pixel-confirm-btn pixel-confirm-btn-delete"
           >
-            {confirmLabel}
+            {confirmLabel || "删除"}
           </button>
         </div>
-
       </div>
     </div>
   )

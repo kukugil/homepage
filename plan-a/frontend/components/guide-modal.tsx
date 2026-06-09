@@ -143,9 +143,9 @@ export function GuideModal({ onClose }: GuideModalProps) {
           </Section>
 
           {/* 第四步 */}
-          <Section num="4" title="上传书籍文件">
+          <Section num="4" title="上传文件">
             <ol className="space-y-1" style={{ paddingLeft: "1.3em" }}>
-              <li>在「上传书籍」标签页点击上传区域</li>
+              <li>在「上传文件」标签页点击上传区域</li>
               <li>选择要传输的文件（支持多选）</li>
               <li>等待进度条走完，文件名旁出现 ✓ 即上传成功</li>
             </ol>
@@ -166,6 +166,7 @@ export function GuideModal({ onClose }: GuideModalProps) {
                   ["纯文本", ".txt", "文本文件"],
                   ["电子书", ".epub", "EPUB 标准格式"],
                   ["文档", ".pdf", "PDF 文档"],
+                  ["音频", ".mp3", "MP3 音频"],
                   ["固件", ".bin", "二进制固件"],
                   ["固件", ".fw", "固件镜像"],
                 ].map(([type, ext, desc], i) => (
@@ -181,14 +182,14 @@ export function GuideModal({ onClose }: GuideModalProps) {
           </Section>
 
           {/* 第五步 */}
-          <Section num="5" title="推送书籍到 MCU">
+          <Section num="5" title="推送文件到 MCU">
             <ol className="space-y-1" style={{ paddingLeft: "1.3em" }}>
-              <li>切换到「书籍列表」标签页</li>
-              <li>勾选想要推送的书籍（可多选）</li>
+              <li>切换到「文件列表」标签页</li>
+              <li>勾选想要推送的文件（可多选）</li>
               <li>点击「推送选中 (N)」按钮</li>
-              <li>等待顶部提示「已推送 N 本书，请在阅读器上进行同步」</li>
+              <li>等待顶部提示「已推送 N 个文件，请在阅读器上进行同步」</li>
             </ol>
-            <Note>拖拽书籍左侧手柄可调整排序，拖拽后自动保存。删除书籍有确认弹窗，删除不可恢复。</Note>
+            <Note>拖拽文件左侧手柄可调整排序，拖拽后自动保存。删除文件有确认弹窗，删除不可恢复。</Note>
           </Section>
 
           {/* 第六步 — 待定 */}
