@@ -116,7 +116,7 @@ export function GuideModal({ onClose }: GuideModalProps) {
           <Section num="1" title="手机蓝牙配对 MCU">
             <ol className="space-y-1" style={{ paddingLeft: "1.3em" }}>
               <li>打开手机「设置 → 蓝牙」</li>
-              <li>扫描附近设备，找到 MCU 设备（名称类似 E-Reader-XXXX）</li>
+              <li>扫描附近设备，找到 MCU 设备（名称为 Sifli）</li>
               <li>点击配对</li>
             </ol>
             <Note>部分 Android 机型首次配对后需在蓝牙设备设置中勾选「互联网访问」，否则下一步无法联网。</Note>
@@ -126,8 +126,7 @@ export function GuideModal({ onClose }: GuideModalProps) {
           <Section num="2" title="开启蓝牙共享网络">
             <p className="mb-1">让 MCU 通过手机蓝牙访问网络：</p>
             <ul className="space-y-1" style={{ paddingLeft: "1.3em" }}>
-              <li><b>Android</b>：设置 → 连接与共享 → 蓝牙网络共享 → 开启</li>
-              <li><b>iOS</b>：设置 → 蓝牙 → 已配对设备 → 开启网络共享</li>
+              <li><b>Android</b>：打开设置 → 顶部搜索栏输入「蓝牙共享网络」→ 进入并开启蓝牙网络共享</li>
             </ul>
             <Note>开启后 MCU 与手机保持在 3 米以内，蓝牙信号过远会导致传书中断。</Note>
           </Section>
@@ -166,8 +165,7 @@ export function GuideModal({ onClose }: GuideModalProps) {
                   ["纯文本", ".txt", "文本文件"],
                   ["电子书", ".epub", "EPUB 标准格式"],
                   ["文档", ".pdf", "PDF 文档"],
-                  ["音频", ".mp3", "MP3 音频"],
-                  ["固件", ".bin", "二进制固件"],
+                  ["固件", ".bin", "二进制固件/波形"],
                   ["固件", ".fw", "固件镜像"],
                 ].map(([type, ext, desc], i) => (
                   <tr key={ext} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "var(--card)" : "color-mix(in srgb, var(--secondary), transparent 50%)" }}>
@@ -192,23 +190,15 @@ export function GuideModal({ onClose }: GuideModalProps) {
             <Note>拖拽文件左侧手柄可调整排序，拖拽后自动保存。删除文件有确认弹窗，删除不可恢复。</Note>
           </Section>
 
-          {/* 第六步 — 待定 */}
-          <Section num="6" title="MCU 端同步" tbd>
-            <div
-              className="text-center"
-              style={{
-                padding: "14px 12px",
-                border: "1px dashed var(--border)",
-                background: "var(--secondary)",
-                fontSize: "12px",
-                color: "var(--muted-foreground)",
-                lineHeight: "1.6",
-              }}
-            >
-              此步骤待定，请以 MCU 设备实际界面和操作为准。
-              <br />
-              待硬件团队确认后更新。
-            </div>
+          {/* 第六步 */}
+          <Section num="6" title="MCU 端同步">
+            <ol className="space-y-1" style={{ paddingLeft: "1.3em" }}>
+              <li>在 MCU 二维码界面下方点击「开始同步」按钮</li>
+              <li>MCU 自动下载已推送的文件到本地存储</li>
+              <li>同步完成后，重新进入阅读器刷新书架</li>
+              <li>书籍出现在书架中，固件（.bin / .fw）在固件管理区</li>
+            </ol>
+            <Note>同步过程中请保持手机蓝牙共享网络开启，且 MCU 在 3 米范围内。</Note>
           </Section>
 
           {/* ===== FAQ ===== */}
@@ -230,6 +220,7 @@ export function GuideModal({ onClose }: GuideModalProps) {
                 { q: "扫码后 SN 没有自动填充？", a: "确认二维码包含 SN 信息。如没有，请在 MCU 设置中查看 SN 后手动输入。" },
                 { q: "扫描二维码失败？", a: "检查浏览器摄像头权限。推荐使用 Chrome（支持原生扫码）。仍失败可手动输入 SN。" },
                 { q: "上传文件失败？", a: "检查文件不超过 500 MB，网络通畅。刷新重试，文件名建议用英文或数字。" },
+                { q: "推送后 MCU 同步不到？", a: "确认手机蓝牙共享网络仍开启，MCU 在蓝牙范围内。在 MCU 二维码界面下方点击「开始同步」，同步后重新进入阅读器刷新书架。" },
                 { q: "SN 格式有什么要求？", a: "字母或数字开头，1-64 位，仅允许字母、数字、连字符(-)。示例：SN001、Reader-Pro-2024。" },
               ].map(({ q, a }, i) => (
                 <div key={i} style={{ borderBottom: "1px solid var(--border)" }}>
