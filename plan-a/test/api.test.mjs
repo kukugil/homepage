@@ -85,14 +85,16 @@ describe('POST /api/v1/books/upload', () => {
   });
 
   it('200 — upload .bin firmware file', async () => {
+    // Need >1KB for waveform validation
+    const fw = Buffer.alloc(2048, 0xFF);
     const res = await supertest(app)
       .post('/api/v1/books/upload')
       .field('sn', VALID_SN)
-      .attach('file', Buffer.from('firmware binary data'), 'v2.1.bin')
+      .attach('file', fw, 'v2.1.bin')
       .expect(200);
 
     expect(res.body.format).toBe('bin');
-    expect(res.body.title).toBe('v2.1');
+    expect(res.body.file_type).toBe('waveform');
   });
 });
 

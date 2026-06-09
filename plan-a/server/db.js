@@ -38,6 +38,7 @@ function initSchema() {
   // Migration: add columns to existing databases
   try { db.exec('ALTER TABLE books ADD COLUMN selected INTEGER DEFAULT 0'); } catch {}
   try { db.exec('ALTER TABLE books ADD COLUMN filename TEXT DEFAULT \'\''); } catch {}
+  try { db.exec('ALTER TABLE books ADD COLUMN file_type TEXT DEFAULT \'book\''); } catch {}
 
   // Device-level config
   db.exec(`CREATE TABLE IF NOT EXISTS device_config (
@@ -48,8 +49,8 @@ function initSchema() {
 
 function insertBook(book) {
   const stmt = getDb().prepare(`
-    INSERT INTO books (book_id, sn, title, author, file_size, format, checksum, metadata_version, sort_order, filename)
-    VALUES (@book_id, @sn, @title, @author, @file_size, @format, @checksum, @metadata_version, @sort_order, @filename)
+    INSERT INTO books (book_id, sn, title, author, file_size, format, checksum, metadata_version, sort_order, filename, file_type)
+    VALUES (@book_id, @sn, @title, @author, @file_size, @format, @checksum, @metadata_version, @sort_order, @filename, @file_type)
     ON CONFLICT(book_id) DO UPDATE SET
       title = excluded.title,
       author = excluded.author,
@@ -57,6 +58,7 @@ function insertBook(book) {
       format = excluded.format,
       checksum = excluded.checksum,
       filename = excluded.filename,
+      file_type = excluded.file_type,
       metadata_version = metadata_version + 1,
       updated_at = datetime('now')
   `);

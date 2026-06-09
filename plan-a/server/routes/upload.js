@@ -78,25 +78,39 @@ function validateChunkMeta(body) {
 async function registerBookFromFile({ sn, sourcePath, originalName, fileSize }) {
   const bookId = `b_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
   const ext = path.extname(originalName).toLowerCase();
-  const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : ext === '.bin' ? 'bin' : ext === '.fw' ? 'fw' : 'txt';
+  const { detectFileType } = require('../file-type');
   const title = fixFilenameEncoding(path.basename(originalName, ext));
-  const filename = `${bookId}.${format}`;
   await ensureDirs(sn);
 
   const fsp = require('fs/promises');
-  const destPath = bookPath(sn, bookId, format);
-  await fsp.copyFile(sourcePath, destPath);
+  const tmpPath = bookPath(sn, bookId, ext.replace('.', ''));
+  await fsp.copyFile(sourcePath, tmpPath);
   await fsp.unlink(sourcePath).catch(() => {});
 
-  const checksum = await sha256File(destPath);
+  // Detect real type — don't trust extension
+  const detection = detectFileType(tmpPath, originalName);
+  if (!detection.ok) {
+    await fsp.unlink(tmpPath).catch(() => {});
+    const err = new Error(detection.reason || 'File type mismatch');
+    err.status = 400;
+    err.expose = true;
+    throw err;
+  }
 
-  extractCover(destPath, sn, bookId, format, title).catch(err =>
+  const format = detection.format;
+  const file_type = detection.file_type;
+  const finalPath = bookPath(sn, bookId, format);
+  if (tmpPath !== finalPath) await fsp.rename(tmpPath, finalPath);
+  const checksum = await sha256File(finalPath);
+
+  extractCover(finalPath, sn, bookId, format, title).catch(err =>
     console.error(`Cover extraction error for ${bookId}: ${err.message}`)
   );
 
+  const filename = `${bookId}.${format}`;
   const sortOrder = db.getBooksBySn(sn).length;
   db.insertBook({
-    book_id: bookId, sn, title, filename,
+    book_id: bookId, sn, title, filename, file_type,
     author: '', file_size: fileSize, format,
     checksum, metadata_version: 1, sort_order: sortOrder,
   });
@@ -109,6 +123,7 @@ async function registerBookFromFile({ sn, sourcePath, originalName, fileSize }) 
     author: '',
     file_size: fileSize,
     format,
+    file_type,
     checksum: `sha256:${checksum}`,
     cover_url: `/dl/${sn}/covers/${bookId}.jpg`,
     download_url: `/dl/${sn}/books/${bookId}/${encodeURIComponent(sanitizeTitle(title))}.${format}`,

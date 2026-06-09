@@ -11,6 +11,11 @@ function buildQueue(sn) {
   const books = db.getSelectedBooksBySn(sn);
   const result = formatBooks(sn, books);
   result.target = db.getDeviceTarget(sn);
+  // Determine mode: all waveform → "waveform", else → "books"
+  const hasWaveform = books.some(b => (b.file_type || 'book') === 'waveform');
+  const hasBook = books.some(b => (b.file_type || 'book') !== 'waveform');
+  if (books.length > 0 && hasWaveform && !hasBook) result.mode = 'waveform';
+  else result.mode = 'books';
   return result;
 }
 

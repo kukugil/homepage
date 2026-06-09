@@ -292,13 +292,27 @@ router.put('/devices/:sn/books/select',
   asyncHandler(async (req, res) => {
     const sn = req.validatedSN;
     const { book_ids, target } = req.body || {};
-    db.selectBooks(sn, Array.isArray(book_ids) ? book_ids : []);
-    // target: 1=flash, 0=TF卡 (可选，不传则保持之前设置)
+    const ids = Array.isArray(book_ids) ? book_ids : [];
+    // Check for mixed waveform + book selection
+    if (ids.length > 0) {
+      const { isWaveformItem, isBookLikeItem } = require('../file-type');
+      const allBooks = db.getBooksBySn(sn);
+      let hasWaveform = false, hasBook = false;
+      for (const b of allBooks) {
+        if (!ids.includes(b.book_id)) continue;
+        if (isWaveformItem(b)) hasWaveform = true;
+        if (isBookLikeItem(b)) hasBook = true;
+      }
+      if (hasWaveform && hasBook) {
+        return res.status(400).json({ error: '不能同时推送书籍文件和波形文件' });
+      }
+    }
+    db.selectBooks(sn, ids);
     if (typeof target === 'number') {
       db.setDeviceTarget(sn, target);
     }
     await regenerateManifest(sn);
-    res.json({ ok: true, selected: book_ids ? book_ids.length : 0, target: db.getDeviceTarget(sn) });
+    res.json({ ok: true, selected: ids.length, target: db.getDeviceTarget(sn) });
   })
 );
 
