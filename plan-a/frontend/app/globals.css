@@ -212,14 +212,12 @@
   100% { background-position: 12px 0; }
 }
 
-/* Pixel toast: prevent sonner hover flicker */
-[data-sonner-toast] {
-  transition: none !important;
-  border-radius: 0 !important;
-}
-[data-sonner-toast]:hover {
-  transform: none !important;
-}
+/* Fix sonner — true center */
+[data-sonner-toaster] { position:fixed !important; top:50% !important; left:50% !important; transform:translate(-50%,-50%) !important; z-index:9999 !important; max-width:90vw !important; }
+
+/* Pixel toast */
+[data-sonner-toast] { transition:none !important; border-radius:0 !important; max-width:85vw !important; }
+[data-sonner-toast]:hover { transform:none !important; }
 
 /* Hide sonner default colored icon */
 [data-sonner-toast] [data-icon] svg {

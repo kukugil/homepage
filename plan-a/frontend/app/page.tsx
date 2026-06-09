@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Toaster } from "sonner"
-import { Header } from "@/components/header"
+import { Header, type HeaderRef } from "@/components/header"
 import { UploadTab } from "@/components/upload-tab"
 import { BookListTab } from "@/components/book-list-tab"
 import { GuideModal } from "@/components/guide-modal"
@@ -16,21 +16,25 @@ function HomeContent() {
   const [isIntl, setIsIntl] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [guideMinimizing, setGuideMinimizing] = useState(false)
+  const [guideTargetRect, setGuideTargetRect] = useState<DOMRect | null>(null)
+  const guideBtnRef = useRef<HeaderRef>(null)
   const t = useT()
 
-  // New SN → auto-show guide
   useEffect(() => {
     if (isNewSN) setShowGuide(true)
   }, [isNewSN])
 
-  // Guide close handler — minimize animation then hide
   const handleCloseGuide = useCallback(() => {
     dismissNewSN()
+    // FLIP: read target button position
+    const rect = guideBtnRef.current?.guideButtonRect()
+    setGuideTargetRect(rect ?? null)
     setGuideMinimizing(true)
     setTimeout(() => {
       setShowGuide(false)
       setGuideMinimizing(false)
-    }, 400)
+      setGuideTargetRect(null)
+    }, 500)
   }, [dismissNewSN])
 
   useEffect(() => {
@@ -42,36 +46,27 @@ function HomeContent() {
   return (
     <>
       <Toaster
-        position="top-center"
+        position="center"
         gap={8}
         toastOptions={{
-          unstyled: false,
-          classNames: {
-            toast: 'pixel-toast',
-            title: 'pixel-toast-title',
-            description: 'pixel-toast-desc',
-            actionButton: 'pixel-toast-action',
-            cancelButton: 'pixel-toast-cancel',
-            closeButton: 'pixel-toast-close',
-          },
           style: {
             background: 'var(--card)',
             color: 'var(--foreground)',
             border: '1px solid var(--border)',
             borderRadius: 0,
-            fontFamily: 'var(--font-vt323)',
-            fontSize: '1rem',
-            letterSpacing: '0.04em',
-            padding: '10px 16px',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontSize: '14px',
+            maxWidth: '85vw',
+            wordBreak: 'break-word',
+            padding: '14px 18px',
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            maxWidth: '90vw',
           },
           duration: 2000,
         }}
       />
     <main className="min-h-screen bg-background">
       <div className="w-full max-w-4xl mx-auto px-3 sm:px-4 py-3 sm:py-8 scanlines">
-        <Header onHelpClick={() => setShowGuide(true)} />
+        <Header onHelpClick={() => setShowGuide(true)} guideRef={guideBtnRef} />
 
         {/* Tab Navigation — 移动端更大触摸目标 */}
         <div className="flex gap-0 mb-4 sm:mb-8 border-b-2 border-border">
@@ -124,7 +119,7 @@ function HomeContent() {
       </div>
     </main>
 
-    {showGuide && <GuideModal onClose={handleCloseGuide} minimizing={guideMinimizing} />}
+    {showGuide && <GuideModal onClose={handleCloseGuide} minimizing={guideMinimizing} targetRect={guideTargetRect} />}
     </>
   )
 }

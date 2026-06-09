@@ -109,8 +109,7 @@ export function UploadTab({ onUploadComplete }: UploadTabProps) {
     accept: {
       'text/plain': ['.txt'],
       'application/epub+zip': ['.epub'],
-      'application/pdf': ['.pdf'],
-      'application/octet-stream': ['.bin', '.fw']
+      'application/octet-stream': ['.bin']
     },
     maxSize: 500 * 1024 * 1024,
     disabled: !isValidSN,

@@ -36,7 +36,7 @@ const translations: Record<string, Record<Lang, string>> = {
   uploadTab: { zh: "上传文件", en: "Upload Files" },
   dragOrClickUpload: { zh: "拖拽文件到此处，或点击选择", en: "Drag files here or click to select" },
   dropToUpload: { zh: "松开以上传文件", en: "Drop to upload" },
-  supportedFormats: { zh: "支持 EPUB / PDF / TXT / MP3 / BIN / FW，单文件最大 500MB", en: "Supports EPUB / PDF / TXT / MP3 / BIN / FW, max 500MB per file" },
+  supportedFormats: { zh: "支持 TXT / EPUB / BIN，单文件最大 500MB", en: "Supports TXT / EPUB / BIN, max 500MB per file" },
   uploadProgress: { zh: "上传进度", en: "Upload progress" },
   uploadSuccess: { zh: "上传成功", en: "Uploaded" },
   uploadFailed: { zh: "失败", en: "Failed" },

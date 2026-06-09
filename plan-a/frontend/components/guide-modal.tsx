@@ -1,21 +1,41 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 interface GuideModalProps {
   onClose: () => void
   minimizing?: boolean
+  targetRect?: DOMRect | null
 }
 
-export function GuideModal({ onClose, minimizing = false }: GuideModalProps) {
+export function GuideModal({ onClose, minimizing = false, targetRect = null }: GuideModalProps) {
   const [visible, setVisible] = useState(false)
   const [faqOpen, setFaqOpen] = useState<number | null>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const [animStyle, setAnimStyle] = useState<React.CSSProperties>({})
 
   // 入场动画
   useEffect(() => {
     const raf = requestAnimationFrame(() => setVisible(true))
     return () => cancelAnimationFrame(raf)
   }, [])
+
+  // FLIP: calculate dynamic scale/translate to target button
+  useEffect(() => {
+    if (!minimizing || !targetRect || !modalRef.current) return
+    const mRect = modalRef.current.getBoundingClientRect()
+    const scaleX = targetRect.width / mRect.width
+    const scaleY = targetRect.height / mRect.height
+    const scale = Math.max(0.04, Math.min(0.12, (scaleX + scaleY) / 2))
+    const tx = targetRect.left + targetRect.width / 2 - mRect.left - (mRect.width * scale) / 2
+    const ty = targetRect.top + targetRect.height / 2 - mRect.top - (mRect.height * scale) / 2
+    setAnimStyle({
+      transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
+      transformOrigin: "0 0",
+      opacity: 0,
+      transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in",
+    })
+  }, [minimizing, targetRect])
 
   // Body 滚动锁定
   useEffect(() => {
@@ -45,18 +65,22 @@ export function GuideModal({ onClose, minimizing = false }: GuideModalProps) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
+        ref={modalRef}
         className="bg-card w-full sm:max-w-lg relative flex flex-col"
         style={{
           border: "1px solid var(--border)",
           borderRadius: 0,
           boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
           maxHeight: "90vh",
-          transform: minimizing ? "scale(0.08) translate(-160px, -80px)" : visible ? "scale(1)" : "scale(0.95)",
-          transformOrigin: "0 0",
-          opacity: minimizing ? 0 : visible ? 1 : 0,
-          transition: minimizing
-            ? "transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in"
-            : "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease-out",
+          ...(minimizing && targetRect
+            ? animStyle
+            : {
+                transform: visible ? "scale(1)" : "scale(0.95)",
+                transformOrigin: "0 0",
+                opacity: visible ? 1 : 0,
+                transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease-out",
+              }
+          ),
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -117,22 +141,22 @@ export function GuideModal({ onClose, minimizing = false }: GuideModalProps) {
           </Section>
 
           {/* 第一步 */}
-          <Section num="1" title="手机蓝牙配对 MCU">
-            <ol className="space-y-1" style={{ paddingLeft: "1.3em" }}>
-              <li>打开手机「设置 → 蓝牙」</li>
-              <li>扫描附近设备，找到 MCU 设备（名称为 Sifli）</li>
-              <li>点击配对</li>
-            </ol>
-            <Note>部分 Android 机型首次配对后需在蓝牙设备设置中勾选「互联网访问」，否则下一步无法联网。</Note>
-          </Section>
-
-          {/* 第二步 */}
-          <Section num="2" title="开启蓝牙共享网络">
+          <Section num="1" title="开启蓝牙共享网络">
             <p className="mb-1">让 MCU 通过手机蓝牙访问网络：</p>
             <ul className="space-y-1" style={{ paddingLeft: "1.3em" }}>
               <li><b>Android</b>：打开设置 → 顶部搜索栏输入「蓝牙共享网络」→ 进入并开启蓝牙网络共享</li>
             </ul>
             <Note>开启后 MCU 与手机保持在 3 米以内，蓝牙信号过远会导致传书中断。</Note>
+          </Section>
+
+          {/* 第二步 */}
+          <Section num="2" title="手机蓝牙配对 MCU">
+            <ol className="space-y-1" style={{ paddingLeft: "1.3em" }}>
+              <li>打开手机「设置 → 蓝牙」</li>
+              <li>扫描附近设备，找到 MCU 设备（名称 E6S-XX-XX-XX-XX-XX-XX）</li>
+              <li>点击配对</li>
+            </ol>
+            <Note>部分 Android 机型首次配对后需在蓝牙设备设置中勾选「互联网访问」。</Note>
           </Section>
 
           {/* 第三步 */}
@@ -168,9 +192,7 @@ export function GuideModal({ onClose, minimizing = false }: GuideModalProps) {
                 {[
                   ["纯文本", ".txt", "文本文件"],
                   ["电子书", ".epub", "EPUB 标准格式"],
-                  ["文档", ".pdf", "PDF 文档"],
                   ["固件", ".bin", "二进制固件/波形"],
-                  ["固件", ".fw", "固件镜像"],
                 ].map(([type, ext, desc], i) => (
                   <tr key={ext} style={{ borderBottom: "1px solid var(--border)", background: i % 2 === 0 ? "var(--card)" : "color-mix(in srgb, var(--secondary), transparent 50%)" }}>
                     <td style={{ padding: "4px 8px" }}>{type}</td>
