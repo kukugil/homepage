@@ -66,16 +66,17 @@ export function GuideModal({ onClose }: GuideModalProps) {
           }}
         >
           <h3
-            className="font-pixel flex-1 select-none"
+            className="flex-1 select-none"
             style={{
-              fontSize: 12,
+              fontSize: 13,
+              fontWeight: 600,
               color: "var(--foreground)",
-              letterSpacing: "0.1em",
+              fontFamily: "system-ui, -apple-system, sans-serif",
               lineHeight: 1,
               margin: 0,
             }}
           >
-            使用帮助 / USER GUIDE
+            使用帮助
           </h3>
           <button
             onClick={onClose}
@@ -155,9 +156,9 @@ export function GuideModal({ onClose }: GuideModalProps) {
             >
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--secondary)" }}>
-                  <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: "10px", fontFamily: "var(--font-pixel)", letterSpacing: "0.05em", textTransform: "uppercase" }}>格式</th>
-                  <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: "10px", fontFamily: "var(--font-pixel)", letterSpacing: "0.05em", textTransform: "uppercase" }}>扩展名</th>
-                  <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: "10px", fontFamily: "var(--font-pixel)", letterSpacing: "0.05em", textTransform: "uppercase" }}>说明</th>
+                  <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: "11px", fontFamily: "system-ui, -apple-system, sans-serif" }}>格式</th>
+                  <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: "11px", fontFamily: "system-ui, -apple-system, sans-serif" }}>扩展名</th>
+                  <th style={{ padding: "4px 8px", textAlign: "left", fontWeight: 600, color: "var(--muted-foreground)", fontSize: "11px", fontFamily: "system-ui, -apple-system, sans-serif" }}>说明</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,8 +213,13 @@ export function GuideModal({ onClose }: GuideModalProps) {
           {/* ===== FAQ ===== */}
           <div style={{ marginTop: "18px", borderTop: "1px solid var(--border)", paddingTop: "12px" }}>
             <h3
-              className="font-pixel tracking-wider mb-2"
-              style={{ fontSize: "11px", color: "var(--muted-foreground)" }}
+              className="mb-2"
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "var(--muted-foreground)",
+                fontFamily: "system-ui, -apple-system, sans-serif",
+              }}
             >
               常见问题 FAQ
             </h3>
@@ -273,15 +279,15 @@ export function GuideModal({ onClose }: GuideModalProps) {
         <div className="flex-shrink-0" style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
           <button
             onClick={onClose}
-            className="w-full font-pixel tracking-wider select-none"
+            className="w-full select-none"
             style={{
               padding: "10px 0",
               background: "var(--card)",
               color: "var(--foreground)",
               border: "1px solid var(--border)",
-              fontSize: "12px",
-              letterSpacing: "0.08em",
+              fontSize: "14px",
               borderRadius: 0,
+              fontFamily: "system-ui, -apple-system, sans-serif",
               cursor: "pointer",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--secondary)" }}
@@ -320,10 +326,13 @@ function Section({
       }}
     >
       <h3
-        className="font-pixel tracking-wide mb-1.5"
+        className="mb-1.5"
         style={{
-          fontSize: "12px",
+          fontSize: "13px",
+          fontWeight: 600,
           color: textColor,
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          lineHeight: 1.3,
         }}
       >
         第{num}步 · {title}
