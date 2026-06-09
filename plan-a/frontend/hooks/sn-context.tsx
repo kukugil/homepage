@@ -13,6 +13,8 @@ interface SNContextType {
   isValidSN: boolean
   snExists: boolean
   checking: boolean
+  isNewSN: boolean
+  dismissNewSN: () => void
 }
 
 const SNContext = createContext<SNContextType>({
@@ -23,6 +25,8 @@ const SNContext = createContext<SNContextType>({
   isValidSN: false,
   snExists: false,
   checking: false,
+  isNewSN: false,
+  dismissNewSN: () => {},
 })
 
 export function SNProvider({ children }: { children: ReactNode }) {
@@ -30,9 +34,16 @@ export function SNProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false)
   const [snExists, setSnExists] = useState(false)
   const [checking, setChecking] = useState(false)
+  const [isNewSN, setIsNewSN] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const isValidSN = useMemo(() => SN_REGEX.test(deviceSN), [deviceSN])
+
+  const dismissNewSN = useCallback(() => {
+    setIsNewSN(false)
+    setDismissed(true)
+  }, [])
 
   // 首次加载时从 URL 参数 ?sn=XXX 自动填入 SN
   useEffect(() => {
@@ -76,6 +87,10 @@ export function SNProvider({ children }: { children: ReactNode }) {
       } finally {
         if (!controller.signal.aborted) {
           setChecking(false)
+          // New SN detected: valid SN, not in DB, not yet dismissed
+          if (!data.exists && !dismissed) {
+            setIsNewSN(true)
+          }
         }
       }
     }, 400)
@@ -86,8 +101,14 @@ export function SNProvider({ children }: { children: ReactNode }) {
     }
   }, [deviceSN, isValidSN])
 
+  // Reset dismissed when SN changes
+  useEffect(() => {
+    setDismissed(false)
+    setIsNewSN(false)
+  }, [deviceSN])
+
   return (
-    <SNContext.Provider value={{ deviceSN, setDeviceSN, isConnected, setIsConnected, isValidSN, snExists, checking }}>
+    <SNContext.Provider value={{ deviceSN, setDeviceSN, isConnected, setIsConnected, isValidSN, snExists, checking, isNewSN, dismissNewSN }}>
       {children}
     </SNContext.Provider>
   )

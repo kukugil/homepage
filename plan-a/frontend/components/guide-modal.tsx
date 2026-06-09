@@ -4,9 +4,10 @@ import { useEffect, useState } from "react"
 
 interface GuideModalProps {
   onClose: () => void
+  minimizing?: boolean
 }
 
-export function GuideModal({ onClose }: GuideModalProps) {
+export function GuideModal({ onClose, minimizing = false }: GuideModalProps) {
   const [visible, setVisible] = useState(false)
   const [faqOpen, setFaqOpen] = useState<number | null>(null)
 
@@ -38,8 +39,8 @@ export function GuideModal({ onClose }: GuideModalProps) {
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
       style={{
-        backgroundColor: visible ? "rgba(0,0,0,0.40)" : "rgba(0,0,0,0)",
-        transition: "background-color 0.2s ease",
+        backgroundColor: minimizing ? "rgba(0,0,0,0)" : visible ? "rgba(0,0,0,0.40)" : "rgba(0,0,0,0)",
+        transition: "background-color 0.3s ease",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
@@ -50,9 +51,12 @@ export function GuideModal({ onClose }: GuideModalProps) {
           borderRadius: 0,
           boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
           maxHeight: "90vh",
-          transform: visible ? "scale(1)" : "scale(0.95)",
-          opacity: visible ? 1 : 0,
-          transition: "transform 0.2s ease-out, opacity 0.2s ease-out",
+          transform: minimizing ? "scale(0.05)" : visible ? "scale(1)" : "scale(0.95)",
+          transformOrigin: "top left",
+          opacity: minimizing ? 0 : visible ? 1 : 0,
+          transition: minimizing
+            ? "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease-in"
+            : "transform 0.2s ease-out, opacity 0.2s ease-out",
         }}
         onClick={(e) => e.stopPropagation()}
       >

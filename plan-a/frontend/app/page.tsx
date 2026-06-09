@@ -1,20 +1,37 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Toaster } from "sonner"
 import { Header } from "@/components/header"
 import { UploadTab } from "@/components/upload-tab"
 import { BookListTab } from "@/components/book-list-tab"
 import { GuideModal } from "@/components/guide-modal"
-import { SNProvider } from "@/hooks/sn-context"
+import { SNProvider, useSN } from "@/hooks/sn-context"
 import { I18nProvider, useT } from "@/lib/i18n"
 
 function HomeContent() {
+  const { isNewSN, dismissNewSN } = useSN()
   const [activeTab, setActiveTab] = useState<"upload" | "list">("upload")
   const [refreshKey, setRefreshKey] = useState(0)
   const [isIntl, setIsIntl] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
+  const [guideMinimizing, setGuideMinimizing] = useState(false)
   const t = useT()
+
+  // New SN → auto-show guide
+  useEffect(() => {
+    if (isNewSN) setShowGuide(true)
+  }, [isNewSN])
+
+  // Guide close handler — minimize animation then hide
+  const handleCloseGuide = useCallback(() => {
+    dismissNewSN()
+    setGuideMinimizing(true)
+    setTimeout(() => {
+      setShowGuide(false)
+      setGuideMinimizing(false)
+    }, 400)
+  }, [dismissNewSN])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -107,7 +124,7 @@ function HomeContent() {
       </div>
     </main>
 
-    {showGuide && <GuideModal onClose={() => setShowGuide(false)} />}
+    {showGuide && <GuideModal onClose={handleCloseGuide} minimizing={guideMinimizing} />}
     </>
   )
 }
