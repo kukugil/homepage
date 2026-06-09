@@ -212,19 +212,138 @@
   100% { background-position: 12px 0; }
 }
 
-/* Fix sonner toast positioning */
-[data-sonner-toaster] {
-  position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  z-index: 9999 !important;
-}
-
 /* Pixel toast: prevent sonner hover flicker */
 [data-sonner-toast] {
   transition: none !important;
+  border-radius: 0 !important;
 }
 [data-sonner-toast]:hover {
   transform: none !important;
+}
+
+/* Hide sonner default colored icon */
+[data-sonner-toast] [data-icon] svg {
+  display: none;
+}
+
+/* =========================================
+   Minimal pixel toast — base (upload success)
+   ========================================= */
+.pixel-toast {
+  position: relative;
+  overflow: hidden;
+  min-height: 42px;
+  max-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-left: 3px solid var(--success) !important;
+  animation: toast-slide-in 0.2s ease-out both;
+}
+
+.pixel-toast-title {
+  font-family: var(--font-vt323);
+  font-size: 1rem;
+  color: var(--foreground);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pixel-toast-close {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+}
+
+.pixel-toast-close:hover {
+  opacity: 1;
+}
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-slide-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
+}
+
+[data-sonner-toast][data-state="closed"] {
+  animation: toast-slide-out 0.15s ease-in both !important;
+}
+
+/* =========================================
+   Minimal pixel toast — push-success variant
+   ========================================= */
+.push-success-toast {
+  border-left: 3px solid var(--primary) !important;
+  animation: toast-slide-in 0.2s ease-out both;
+}
+
+[data-sonner-toast].push-success-toast[data-state="closed"] {
+  animation: toast-slide-out 0.15s ease-in both !important;
+}
+
+/* =========================================
+   Pixel-art confirm dialog
+   ========================================= */
+@keyframes pixel-confirm-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pixel-confirm-btn {
+  flex: 1;
+  font-size: 14px;
+  padding: 12px 0;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  background: none;
+  border-radius: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.pixel-confirm-btn-cancel {
+  background-color: var(--card);
+  color: var(--foreground);
+  border-right: 1px solid var(--border);
+}
+
+.pixel-confirm-btn-cancel:hover {
+  background-color: color-mix(in srgb, var(--secondary), transparent 40%);
+}
+
+.pixel-confirm-btn-delete {
+  background-color: var(--secondary);
+  color: var(--destructive);
+}
+
+.pixel-confirm-btn-delete:hover {
+  background-color: color-mix(in srgb, var(--secondary), transparent 40%);
 }
