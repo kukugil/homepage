@@ -98,7 +98,22 @@ const I18nContext = createContext<I18nContextType>({
 })
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangRaw] = useState<Lang>("en")
+  const [lang, setLangRaw] = useState<Lang>(() => {
+    if (typeof window === "undefined") return "en"
+    // 1. URL param: ?lang=en or ?lang=zh
+    const params = new URLSearchParams(window.location.search)
+    const urlLang = params.get("lang")
+    if (urlLang === "en") return "en"
+    if (urlLang === "zh") return "zh"
+    // 2. Saved preference — synchronous, no flash
+    try {
+      const saved = localStorage.getItem("ereader-lang")
+      if (saved === "zh" || saved === "en") return saved
+    } catch {}
+    // 3. Fallback: let useEffect handle browser language (async-safe)
+    return "en"
+  })
+
   // Wrap setLang to persist preference
   const setLang = useCallback((l: Lang) => {
     try { localStorage.setItem("ereader-lang", l) } catch {}
@@ -107,21 +122,16 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    // 1. URL param: ?lang=en or ?lang=zh
+    // Skip if already determined by URL param or saved pref (handled in lazy init)
     const params = new URLSearchParams(window.location.search)
-    const urlLang = params.get("lang")
-    if (urlLang === "en") { setLangRaw("en"); return }
-    if (urlLang === "zh") { setLangRaw("zh"); return }
-    // 2. Host-based default: international IP → English
+    if (params.get("lang")) return
+    try {
+      if (localStorage.getItem("ereader-lang")) return
+    } catch {}
+    // Host-based default: international IP → English
     const host = window.location.hostname
     const isIntl = host === "43.135.183.44" || host.startsWith("us.")
-    // 3. Saved preference
-    try {
-      const saved = localStorage.getItem("ereader-lang")
-      if (saved === "zh" || saved === "en") { setLangRaw(saved); return }
-    } catch {}
-    // 4. Browser language — zh* → Chinese, everything else → English
-    //    But international IP defaults to English regardless
+    // Browser language — zh* → Chinese, everything else → English
     if (!isIntl && navigator.language.startsWith("zh")) { setLangRaw("zh"); return }
     setLangRaw("en")
   }, [])
