@@ -51,12 +51,12 @@ export function GuideModal({ onClose, minimizing = false }: GuideModalProps) {
           borderRadius: 0,
           boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
           maxHeight: "90vh",
-          transform: minimizing ? "scale(0.05)" : visible ? "scale(1)" : "scale(0.95)",
-          transformOrigin: "top left",
+          transform: minimizing ? "scale(0.08) translate(-160px, -80px)" : visible ? "scale(1)" : "scale(0.95)",
+          transformOrigin: "0 0",
           opacity: minimizing ? 0 : visible ? 1 : 0,
           transition: minimizing
-            ? "transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease-in"
-            : "transform 0.2s ease-out, opacity 0.2s ease-out",
+            ? "transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in"
+            : "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease-out",
         }}
         onClick={(e) => e.stopPropagation()}
       >

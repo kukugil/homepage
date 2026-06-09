@@ -70,6 +70,7 @@ export function SNProvider({ children }: { children: ReactNode }) {
     abortRef.current = controller
     setChecking(true)
 
+    let exists = false
     const timer = setTimeout(async () => {
       try {
         const resp = await fetch(
@@ -79,7 +80,8 @@ export function SNProvider({ children }: { children: ReactNode }) {
         if (resp.ok) {
           const data = await resp.json()
           if (!controller.signal.aborted) {
-            setSnExists(data.exists)
+            exists = data.exists
+            setSnExists(exists)
           }
         }
       } catch (err: unknown) {
@@ -87,10 +89,7 @@ export function SNProvider({ children }: { children: ReactNode }) {
       } finally {
         if (!controller.signal.aborted) {
           setChecking(false)
-          // New SN detected: valid SN, not in DB, not yet dismissed
-          if (!data.exists && !dismissed) {
-            setIsNewSN(true)
-          }
+          if (!exists && !dismissed) setIsNewSN(true)
         }
       }
     }, 400)
