@@ -32,7 +32,11 @@ interface Book {
   size: string
   coverUrl: string
   selected: boolean
+  fileType: "book" | "audio" | "waveform" | "unknown"
 }
+
+function isWaveformBook(b: Book) { return b.fileType === "waveform" }
+function getBookMode(b: Book) { return isWaveformBook(b) ? "waveform" as const : "books" as const }
 
 function formatBadge(format: string): string {
   const b = format.toUpperCase()
@@ -43,12 +47,13 @@ function formatBadge(format: string): string {
   return 'bg-secondary text-muted-foreground'
 }
 
-function SortableBook({ book, selected, onToggle, onDelete, onShowConfirm, t }: {
+function SortableBook({ book, selected, onToggle, onDelete, onShowConfirm, conflictDisabled, t }: {
   book: Book
   selected: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
   onShowConfirm: (msg: string, onOk: () => void) => void
+  conflictDisabled?: boolean
   t: (key: string, ...args: any[]) => string
 }) {
   const {
@@ -76,12 +81,13 @@ function SortableBook({ book, selected, onToggle, onDelete, onShowConfirm, t }: 
       `}
     >
       <div className="flex items-center gap-2 sm:gap-4">
-        <label className="flex-shrink-0 cursor-pointer p-1">
+        <label className={`flex-shrink-0 p-1 ${conflictDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`} title={conflictDisabled ? (t("cannotMix") as string) : ""}>
           <input
             type="checkbox"
             checked={selected}
+            disabled={conflictDisabled}
             onChange={() => onToggle(book.id)}
-            className="w-4 h-4 rounded accent-accent cursor-pointer"
+            className={`w-4 h-4 rounded accent-accent ${conflictDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
           />
         </label>
 
@@ -161,6 +167,7 @@ function mapBook(b: BookResponse): Book {
     size: formatSize(b.file_size),
     coverUrl: b.cover_url || "",
     selected: (b as any).selected === 1,
+    fileType: b.file_type || "book",
   }
 }
 
@@ -184,6 +191,14 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const showConfirm = useCallback((message: string, onOk: () => void) => {
     setConfirm({ message, onOk: () => { onOk(); setConfirm(null) } })
   }, [])
+
+  // Determine selection mode for mutual exclusion
+  const selectionMode = (() => {
+    if (selectedIds.size === 0) return null
+    const firstId = [...selectedIds][0]
+    const firstBook = books.find(b => b.id === firstId)
+    return firstBook ? getBookMode(firstBook) : null
+  })()
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -272,11 +287,25 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
   const handleToggle = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+        return next
+      }
+      // Mutual exclusion: check mode
+      const book = books.find(b => b.id === id)
+      if (!book) return prev
+      if (prev.size > 0) {
+        const firstId = [...prev][0]
+        const firstBook = books.find(b => b.id === firstId)
+        if (firstBook && getBookMode(book) !== getBookMode(firstBook)) {
+          toast.error(t("cannotMix"))
+          return prev
+        }
+      }
+      next.add(id)
       return next
     })
-  }, [])
+  }, [books, t])
 
   const handlePushSelected = async () => {
     if (!deviceSN || selectedIds.size === 0) return
@@ -440,6 +469,7 @@ export function BookListTab({ refreshKey, onGoUpload }: BookListTabProps) {
                   onToggle={handleToggle}
                   onDelete={handleDelete}
                   onShowConfirm={showConfirm}
+                  conflictDisabled={!!selectionMode && getBookMode(book) !== selectionMode}
                   t={t}
                 />
               ))}

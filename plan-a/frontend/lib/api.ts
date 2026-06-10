@@ -6,6 +6,7 @@ export interface BookResponse {
   author: string
   file_size: number
   format: string
+  file_type?: "book" | "audio" | "waveform" | "unknown"
   checksum: string
   metadata_version: number
   cover_url: string
@@ -20,6 +21,7 @@ export interface UploadResult {
   author: string
   file_size: number
   format: string
+  file_type?: "book" | "audio" | "waveform" | "unknown"
   checksum: string
   cover_url: string
   download_url: string

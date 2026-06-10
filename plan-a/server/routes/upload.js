@@ -392,27 +392,17 @@ router.post('/books/batch-upload',
 
     for (const file of req.files) {
       try {
-        const bookId = `b_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
-        const ext = path.extname(file.originalname).toLowerCase();
-        const format = ext === '.epub' ? 'epub' : ext === '.pdf' ? 'pdf' : ext === '.bin' ? 'bin' : ext === '.fw' ? 'fw' : 'txt';
-        const title = fixFilenameEncoding(path.basename(file.originalname, ext));
-        const filename = `${bookId}.${format}`;
-        const destPath = bookPath(sn, bookId, format);
-        await fsp.copyFile(file.path, destPath);
-        await fsp.unlink(file.path).catch(() => {});
-        const checksum = await sha256File(destPath);
-
-        extractCover(destPath, sn, bookId, format, title).catch(err =>
-          console.error(`Cover extraction error for ${bookId}: ${err.message}`)
-        );
-
-        const sortOrder = db.getBooksBySn(sn).length;
-        db.insertBook({
-          book_id: bookId, sn, title, filename, author: '', file_size: file.size,
-          format, checksum, metadata_version: 1, sort_order: sortOrder,
+        const result = await registerBookFromFile({
+          sn,
+          sourcePath: file.path,
+          originalName: file.originalname,
+          fileSize: file.size,
         });
-
-        results.push({ filename: file.originalname, status: 'ok', book_id: bookId });
+        results.push({
+          filename: file.originalname, status: 'ok',
+          book_id: result.book_id, format: result.format,
+          file_type: result.file_type, checksum: result.checksum,
+        });
         successCount++;
       } catch (err) {
         results.push({ filename: file.originalname, status: 'error', reason: err.message });
