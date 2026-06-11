@@ -131,6 +131,9 @@
 }
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -212,12 +215,57 @@
   100% { background-position: 12px 0; }
 }
 
-/* Fix sonner — true center */
-[data-sonner-toaster] { position:fixed !important; top:50% !important; left:50% !important; transform:translate(-50%,-50%) !important; z-index:9999 !important; max-width:90vw !important; }
+/* Sonner toaster — force horizontal center + safe-area */
+[data-sonner-toaster][data-x-position="center"],
+[data-sonner-toaster][data-position="top-center"],
+[data-sonner-toaster][data-position="bottom-center"],
+[data-sonner-toaster][data-position="center"] {
+  position: fixed !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: min(92vw, 420px) !important;
+  max-width: calc(100vw - 24px) !important;
+  --width: min(92vw, 420px) !important;
+  --mobile-offset-left: 0px !important;
+  --mobile-offset-right: 0px !important;
+  z-index: 9999 !important;
+}
+[data-sonner-toaster][data-y-position="top"],
+[data-sonner-toaster][data-position="top-center"] {
+  top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+}
 
-/* Pixel toast */
-[data-sonner-toast] { transition:none !important; border-radius:0 !important; max-width:85vw !important; }
-[data-sonner-toast]:hover { transform:none !important; }
+/* Sonner toast — full container width */
+[data-sonner-toaster][data-x-position="center"] [data-sonner-toast],
+[data-sonner-toast] {
+  left: 0 !important;
+  right: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  transition: none !important;
+  border-radius: 0 !important;
+}
+[data-sonner-toast]:hover { transform: none !important; }
+
+@media (max-width: 600px) {
+  [data-sonner-toaster][data-x-position="center"] {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: min(92vw, 420px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  [data-sonner-toaster][data-x-position="center"] [data-sonner-toast] {
+    left: 0 !important;
+    right: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
 
 /* Hide sonner default colored icon */
 [data-sonner-toast] [data-icon] svg {

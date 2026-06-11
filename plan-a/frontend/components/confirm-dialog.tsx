@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock"
 
 interface ConfirmDialogProps {
   message: string
@@ -17,14 +18,7 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel,
 }: ConfirmDialogProps) {
-  // Lock body scroll when dialog is open
-  useEffect(() => {
-    const original = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = original
-    }
-  }, [])
+  useBodyScrollLock(true)
 
   // Handle Escape key
   useEffect(() => {

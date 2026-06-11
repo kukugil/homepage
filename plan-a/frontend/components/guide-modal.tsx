@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react"
 import { BluetoothScreenshotHint } from "./bluetooth-screenshot-hint"
+import { useBodyScrollLock } from "@/hooks/use-body-scroll-lock"
 
 interface GuideModalProps {
   onClose: () => void
@@ -26,9 +27,7 @@ export function GuideModal({ onClose, guideButtonRef }: GuideModalProps) {
   }, [])
 
   useEffect(() => {
-    const original = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    return () => { document.body.style.overflow = original }
+  useBodyScrollLock(true)
   }, [])
 
   // FLIP close: clone + Web Animations API
@@ -68,24 +67,32 @@ export function GuideModal({ onClose, guideButtonRef }: GuideModalProps) {
     const dx = targetCenterX - modalCenterX
     const dy = targetCenterY - modalCenterY
 
-    // Clone modal for animation
-    const clone = modal.cloneNode(true) as HTMLElement
+    // Lightweight snapshot — avoid deep-cloning heavy DOM
+    const clone = document.createElement("div")
     clone.style.position = "fixed"
     clone.style.left = `${mRect.left}px`
     clone.style.top = `${mRect.top}px`
     clone.style.width = `${mRect.width}px`
     clone.style.height = `${mRect.height}px`
-    clone.style.margin = "0"
+    clone.style.background = "var(--card)"
+    clone.style.border = "1px solid var(--border)"
+    clone.style.borderRadius = "0px"
+    clone.style.boxShadow = "0 4px 24px rgba(0,0,0,0.15)"
     clone.style.pointerEvents = "none"
     clone.style.zIndex = "99999"
     clone.style.transformOrigin = "center center"
-    clone.style.maxHeight = "none"
-    clone.style.overflow = "hidden"
+    clone.style.willChange = "transform, opacity"
+    clone.style.backfaceVisibility = "hidden"
     document.body.appendChild(clone)
 
-    // Hide real modal + overlay
+    // Hide real modal + overlay — GPU-promote to avoid flicker
+    modal.style.willChange = "opacity"
     modal.style.opacity = "0"
-    if (overlayRef.current) overlayRef.current.style.opacity = "0"
+    modal.style.pointerEvents = "none"
+    if (overlayRef.current) {
+      overlayRef.current.style.willChange = "opacity"
+      overlayRef.current.style.opacity = "0"
+    }
 
     // Web Animations API
     const anim = clone.animate(
@@ -173,16 +180,16 @@ export function GuideModal({ onClose, guideButtonRef }: GuideModalProps) {
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex-shrink-0" style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
-          <button onClick={handleClose} className="flex-1 select-none" style={{ padding: "10px 0", background: "var(--card)", color: "var(--foreground)", border: "1px solid var(--border)", fontSize: "14px", borderRadius: 0, fontFamily: "system-ui, -apple-system, sans-serif", cursor: "pointer" }}
+        <div className="flex-shrink-0" style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
+          <a href="https://ereader.fun" target="_blank" rel="noopener noreferrer"
+            className="block text-center select-none"
+            style={{ padding: "10px 0", background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", fontSize: "14px", borderRadius: 0, fontFamily: "system-ui, -apple-system, sans-serif", cursor: "pointer", textDecoration: "none" }}>
+            查看完整指南
+          </a>
+          <button onClick={handleClose} className="w-full select-none" style={{ padding: "10px 0", background: "var(--card)", color: "var(--foreground)", border: "1px solid var(--border)", fontSize: "14px", borderRadius: 0, fontFamily: "system-ui, -apple-system, sans-serif", cursor: "pointer" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--secondary)" }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "var(--card)" }}>
             知道了
-          </button>
-          <button onClick={() => window.open("https://ereader.fun", "_blank")} className="flex-1 select-none" style={{ padding: "10px 0", background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", fontSize: "14px", borderRadius: 0, fontFamily: "system-ui, -apple-system, sans-serif", cursor: "pointer" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card)" }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--secondary)" }}>
-            完整帮助
           </button>
         </div>
       </div>
