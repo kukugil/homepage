@@ -26,9 +26,7 @@ export function GuideModal({ onClose, guideButtonRef }: GuideModalProps) {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  useEffect(() => {
   useBodyScrollLock(true)
-  }, [])
 
   // FLIP close: clone + Web Animations API
   const handleClose = useCallback(() => {
