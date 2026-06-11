@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>使用指南 — E-Reader Book Manager</title>
+<style>
+  :root {
+    --bg: #faf9f5; --fg: #1a1814; --card: #fff; --border: #ddd8ce;
+    --primary: #2d4560; --accent: #c46a3e; --muted: #696158; --secondary: #ece8e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #181510; --fg: #e8ddc8; --card: #221d16; --border: #362e22;
+      --primary: #d4c5a0; --accent: #c49460; --muted: #988c72; --secondary: #282218;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--fg); line-height: 1.7; padding: 24px 16px 48px; }
+  .container { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 22px; margin-bottom: 4px; color: var(--primary); }
+  .subtitle { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+  .step { border-left: 2px solid var(--primary); padding-left: 12px; margin-bottom: 28px; }
+  .step h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .step p, .step li { font-size: 14px; }
+  .step ol, .step ul { padding-left: 1.5em; }
+  .step li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: var(--secondary); color: var(--muted); font-weight: 600; font-size: 12px; }
+  .note { background: var(--secondary); border-left: 2px solid var(--border); padding: 10px 14px; margin: 10px 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .faq { margin-top: 32px; border-top: 1px solid var(--border); padding-top: 16px; }
+  .faq h3 { font-size: 14px; margin-bottom: 12px; color: var(--muted); }
+  details { margin-bottom: 8px; border-bottom: 1px solid var(--border); }
+  summary { padding: 10px 0; font-size: 13px; cursor: pointer; }
+  details p { font-size: 12px; color: var(--muted); padding: 0 0 10px 20px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>MCU 阅读器 · 使用指南</h1>
+<p class="subtitle">无线传书 · 固件升级 · 完整教程</p>
+
+<div class="step">
+  <h2>前置准备</h2>
+  <ul>
+    <li>MCU 阅读器已开机，蓝牙正常</li>
+    <li>智能手机（Android / iOS，浏览器建议 Chrome）</li>
+    <li>手机能正常上网（首次加载网页，之后 PWA 缓存可离线）</li>
+  </ul>
+</div>
+
+<div class="step">
+  <h2>第1步 · 开启蓝牙共享网络</h2>
+  <p>让 MCU 通过手机蓝牙访问网络：</p>
+  <ul>
+    <li><b>Android</b>：打开设置 → 顶部搜索栏输入「蓝牙共享网络」→ 进入并开启蓝牙网络共享</li>
+  </ul>
+  <div class="note">开启后 MCU 与手机保持在 3 米以内，蓝牙信号过远会导致传书中断。</div>
+</div>
+
+<div class="step">
+  <h2>第2步 · 手机蓝牙配对 MCU</h2>
+  <ol>
+    <li>打开手机「设置 → 蓝牙」</li>
+    <li>扫描附近设备，找到 MCU 设备（名称 E6S-XX-XX-XX-XX-XX-XX）</li>
+    <li>点击配对</li>
+  </ol>
+  <div class="note">部分 Android 机型首次配对后需在蓝牙设备设置中勾选「互联网访问」。</div>
+</div>
+
+<div class="step">
+  <h2>第3步 · 扫码进入传书主页</h2>
+  <ol>
+    <li>打开 MCU 上的「传书」功能，屏幕显示二维码</li>
+    <li>用手机扫描二维码，浏览器自动跳转到传书主页</li>
+    <li>页面顶部 SN 号自动填充，状态显示「已连接」</li>
+  </ol>
+  <div class="note">如果 SN 未自动填充，可手动输入。格式：字母或数字开头，1-64 位，仅允许字母、数字和连字符(-)。</div>
+</div>
+
+<div class="step">
+  <h2>第4步 · 上传文件</h2>
+  <ol>
+    <li>在「上传文件」标签页点击上传区域</li>
+    <li>选择要传输的文件（支持多选）</li>
+    <li>等待进度条走完，文件名旁出现 ✓ 即上传成功</li>
+  </ol>
+  <table>
+    <thead><tr><th>格式</th><th>扩展名</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>纯文本</td><td>.txt</td><td>文本文件</td></tr>
+      <tr><td>电子书</td><td>.epub</td><td>EPUB 标准格式</td></tr>
+      <tr><td>固件</td><td>.bin</td><td>二进制固件/波形</td></tr>
+    </tbody>
+  </table>
+  <div class="note">单文件最大 500 MB。超过 512 KB 自动分片上传。上传区域灰色不可点击表示 SN 未验证通过。</div>
+</div>
+
+<div class="step">
+  <h2>第5步 · 推送文件到 MCU</h2>
+  <ol>
+    <li>切换到「文件列表」标签页</li>
+    <li>勾选想要推送的文件（可多选）</li>
+    <li>点击「推送选中 (N)」按钮</li>
+    <li>等待提示「已推送 N 个文件，请在阅读器上进行同步」</li>
+  </ol>
+  <div class="note">拖拽文件左侧手柄可调整排序，拖拽后自动保存。删除文件有确认弹窗，删除不可恢复。</div>
+</div>
+
+<div class="step">
+  <h2>第6步 · MCU 端同步</h2>
+  <ol>
+    <li>在 MCU 二维码界面下方点击「开始同步」按钮</li>
+    <li>MCU 自动下载已推送的文件到本地存储</li>
+    <li>同步完成后，重新进入阅读器刷新书架</li>
+    <li>书籍出现在书架中，固件（.bin）在固件管理区</li>
+  </ol>
+</div>
+
+<div class="faq">
+  <h3>常见问题 FAQ</h3>
+  <details><summary>上传区域灰色不能点？</summary><p>SN 号未输入或格式不正确。确认顶部状态为「已连接」。</p></details>
+  <details><summary>扫码后 SN 没有自动填充？</summary><p>确认二维码包含 SN 信息。如没有，请在 MCU 设置中查看 SN 后手动输入。</p></details>
+  <details><summary>上传文件失败？</summary><p>检查文件不超过 500 MB，网络通畅。刷新重试，文件名建议用英文或数字。</p></details>
+  <details><summary>推送后 MCU 同步不到？</summary><p>确认手机蓝牙共享网络仍开启，MCU 在蓝牙范围内。点击「开始同步」后重新进入阅读器刷新书架。</p></details>
+  <details><summary>SN 格式有什么要求？</summary><p>字母或数字开头，1-64 位，仅允许字母、数字、连字符(-)。示例：SN001。</p></details>
+</div>
+</div>
+</body>
+</html>

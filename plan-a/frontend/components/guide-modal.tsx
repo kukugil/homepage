@@ -179,7 +179,7 @@ export function GuideModal({ onClose, guideButtonRef }: GuideModalProps) {
 
         {/* 底部按钮 */}
         <div className="flex-shrink-0" style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 8 }}>
-          <a href="https://ereader.fun" target="_blank" rel="noopener noreferrer"
+          <a href="/full-guide.html" target="_blank" rel="noopener noreferrer"
             className="block text-center select-none"
             style={{ padding: "10px 0", background: "var(--secondary)", color: "var(--foreground)", border: "1px solid var(--border)", fontSize: "14px", borderRadius: 0, fontFamily: "system-ui, -apple-system, sans-serif", cursor: "pointer", textDecoration: "none" }}>
             查看完整指南
