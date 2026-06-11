@@ -156,7 +156,7 @@ export function GuideModal({ onClose, guideButtonRef }: GuideModalProps) {
           {/* 步骤 1：连接阅读器 */}
           <Section num="1" title="连接阅读器">
             <p style={{ margin: "2px 0" }}>
-              在手机蓝牙设置中连接 MCU，并开启蓝牙共享网络。
+              先开启手机蓝牙共享，再打开蓝牙和阅读器配对。
             </p>
             <BluetoothScreenshotHint compact />
           </Section>
@@ -171,8 +171,9 @@ export function GuideModal({ onClose, guideButtonRef }: GuideModalProps) {
           {/* 步骤 3：上传并推送 */}
           <Section num="3" title="上传并推送">
             <p style={{ margin: "2px 0" }}>
-              选择文件上传，上传完成后到文件列表勾选并推送。
+              选择文件上传并推送后，在阅读器内 设备 → 更新书籍 → 开始同步，进行同步。
             </p>
+            <BluetoothScreenshotHint compact />
           </Section>
 
         </div>
