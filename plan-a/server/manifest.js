@@ -11,11 +11,6 @@ function buildQueue(sn) {
   const books = db.getSelectedBooksBySn(sn);
   const result = formatBooks(sn, books);
   result.target = db.getDeviceTarget(sn);
-  // Determine mode: all waveform → "waveform", else → "books"
-  const hasWaveform = books.some(b => (b.file_type || 'book') === 'waveform');
-  const hasBook = books.some(b => (b.file_type || 'book') !== 'waveform');
-  if (books.length > 0 && hasWaveform && !hasBook) result.mode = 'waveform';
-  else result.mode = 'books';
   return result;
 }
 
@@ -30,7 +25,6 @@ function formatBooks(sn, books) {
       author: b.author || 'Unknown',
       file_size: b.file_size,
       format: b.format,
-      type: b.format === 'bin' || b.format === 'fw' ? 'firmware' : 'book',
       checksum: b.checksum ? `sha256:${b.checksum}` : '',
       metadata_version: b.metadata_version || 1,
       cover_url: `/dl/${sn}/covers/${b.book_id}.jpg`,
